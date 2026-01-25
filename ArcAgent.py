@@ -30,14 +30,28 @@ class ArcAgent:
         marked as INCORRECT.
         """
 
+        # Initialize input, output, and predictions list
         predictions: list[np.ndarray] = list()
+        training_data = arc_problem.training_set()
+        training_input = [data.get_input_data().data() for data in training_data]
+        training_output = [data.get_output_data().data() for data in training_data] 
 
-        '''
-        The next 2 lines are only an example of how to populate the predictions list.
-        This will just be an empty answer the size of the input data;
-        delete it before you start adding your own predictions.
-        '''
-        output = np.zeros_like(arc_problem.test_set().get_input_data().data())
-        predictions.append(output)
+        test_data = arc_problem.test_set()
+        test_input = test_data.get_input_data().data()
+
+        # Hardcoded solution to Milestone B question 1:
+        nonzero_positions = np.where(test_input != 0)
+        
+        if len(nonzero_positions[0]) > 0:
+            min_row = np.min(nonzero_positions[0])
+            max_row = np.max(nonzero_positions[0])
+            min_col = np.min(nonzero_positions[1])
+            max_col = np.max(nonzero_positions[1])
+            
+            # Extract the smallest submatrix containing all nonzero entries
+            result = test_input[min_row:max_row+1, min_col:max_col+1]
+            predictions.append(result)
+        else:
+            predictions.append(np.array([[]]))
 
         return predictions
