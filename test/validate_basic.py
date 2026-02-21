@@ -4,6 +4,10 @@ Basic validation: check that all components connect properly
 
 import numpy as np
 import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_imports():
     """Test all imports work"""
@@ -91,8 +95,8 @@ def test_pipeline():
         # Extract objects
         extractor = ObjectExtractor()
         objects = extractor.extract(grid)
-        print(f"   [OK] ObjectExtractor.extract() -> {type(objects)}")
-        assert isinstance(objects, dict), f"Expected dict, got {type(objects)}"
+        print(f"   [OK] ObjectExtractor.extract() -> {type(objects).__name__} with {len(objects)} objects")
+        assert isinstance(objects, list), f"Expected list, got {type(objects)}"
         
         # Build graph
         builder = GraphBuilder()

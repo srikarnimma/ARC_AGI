@@ -1,11 +1,12 @@
-"""
-Semantic graph data structure.
-Input: objects (from ObjectExtractor) -> Output: SemanticGraph
-"""
+# Semantic graph for object relationships
+# Builds spatial graph from extracted objects
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import List
 from enum import Enum
+
+# Import Object type for type hints
+from GraphObjectExtractor import Object
 
 
 class RelationType(Enum):
@@ -33,16 +34,28 @@ class Relation:
 
 
 class SemanticGraph:
-    """Input: objects -> Output: graph with nodes and relations."""
+    # Semantic graph with object nodes and relationships
     
     def __init__(self):
-        self.nodes: Dict[int, GraphNode] = {}
+        self.nodes: dict[int, GraphNode] = {}
         self.relations: List[Relation] = []
 
 
 class GraphBuilder:
-    """Input: objects -> Output: SemanticGraph"""
+    # Input: list of objects -> Output: SemanticGraph
     
-    def build(self, objects_by_color: Dict) -> SemanticGraph:
-        # TODO
-        return SemanticGraph()
+    def build(self, objects: List[Object]) -> SemanticGraph:
+        # Build semantic graph from objects
+        # TODO: infer spatial relationships (adjacency, above/below, left/right)
+        graph = SemanticGraph()
+        
+        # Add object nodes to graph
+        for obj in objects:
+            # Skip grid boundary (id=-1)
+            if obj.id != -1:
+                node = GraphNode(id=obj.id, color=obj.color, bbox=obj.bbox)
+                graph.nodes[obj.id] = node
+        
+        # TODO: Compute spatial relations between objects
+        
+        return graph

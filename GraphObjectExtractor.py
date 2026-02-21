@@ -1,26 +1,23 @@
-"""
-Utilities for object extraction.
-Input: grid (numpy array)
-Output: dict of color -> list of Objects
-"""
+# Object extraction utilities
+# Takes a grid (numpy array) and extracts objects with features
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple
+from typing import List, Set, Tuple
 from scipy import ndimage
 from collections import deque
 
 
+# Represents a single object/component found in a grid
 @dataclass
 class Object:
-    """Represents an object/component in a grid."""
     id: int
     color: int
     pixels: Set[Tuple[int, int]]
     bbox: Tuple[int, int, int, int]  # (min_r, min_c, max_r, max_c)
     
     # Flags
-    is_grid_boundary: bool = False  # True if this is the grid canvas itself
+    is_grid_boundary: bool = False  # if this is the grid canvas itself
     
     # Features
     is_closed_shape: bool = False
@@ -35,28 +32,24 @@ class Object:
     area: int = 0
     perimeter: int = 0
 
-
+# Main extractor class
+# Reads a grid and outputs a list of detected objects
 class ObjectExtractor:
-    """Input: grid -> Output: Dict[color, List[Object]]"""
-    
     def __init__(self, connectivity: str = "8"):
         self.connectivity = connectivity
     
-    def extract(self, grid: np.ndarray) -> Dict[int, List[Object]]:
-        """Extract objects from grid by color and detect features.
-        
-        Returns dict with colored objects plus a special 'grid' entry containing
-        a grid boundary object that represents the entire canvas dimensions.
-        """
-        objects_by_color: Dict[int, List[Object]] = {}
+    def extract(self, grid: np.ndarray) -> List[Object]:
+        # Extract objects from grid by color and detect features
+        # Returns all objects (colored + grid boundary)
+        objects: List[Object] = []
         visited = np.zeros_like(grid, dtype=bool)
         obj_id = 0
         
         # Get unique non-zero colors
         colors = np.unique(grid[grid != 0])
+        # print(f"Found colors: {colors}")
         
         for color in colors:
-            objects_by_color[color] = []
             color_mask = (grid == color) & ~visited
             
             # BFS to find connected components for this color
@@ -64,30 +57,33 @@ class ObjectExtractor:
                 for c in range(grid.shape[1]):
                     if color_mask[r, c]:
                         pixels = self._bfs(grid, visited, r, c, color)
-                        # Only create objects with area >= 2 (filter out single-pixel noise)
+                        # Filter out single-pixel noise
                         if pixels and len(pixels) >= 2:
-                            obj = self._create_object(obj_id, color, pixels)
-                            objects_by_color[color].append(obj)
+                            # print(f"  Color {color}: found component with {len(pixels)} pixels")
+                            grid_height, grid_width = grid.shape
+                            obj = self._create_object(obj_id, color, pixels, (grid_height, grid_width))
+                            objects.append(obj)
                             obj_id += 1
         
-        # Always add grid boundary object (represents entire grid dimensions)
+        # Always add grid boundary object (metadata for entire grid)
         grid_height, grid_width = grid.shape
         grid_obj = Object(
-            id=-1,  # Special ID for grid boundary
-            color=0,  # Grid uses background color
-            pixels=set(),  # Empty pixel set for metadata object
+            id=-1,
+            color=0,
+            pixels=set(),
             bbox=(0, 0, grid_height - 1, grid_width - 1),
             is_grid_boundary=True,
             area=grid_height * grid_width,
             perimeter=2 * (grid_height + grid_width)
         )
-        objects_by_color[0] = [grid_obj]  # Store under color 0
+        objects.append(grid_obj)
+        # print(f"Extracted {len(objects)-1} colored objects + grid boundary")
         
-        return objects_by_color
+        return objects
     
     def _bfs(self, grid: np.ndarray, visited: np.ndarray, start_r: int, start_c: int, 
              color: int) -> Set[Tuple[int, int]]:
-        """BFS to find all pixels of same color connected to start position."""
+        # BFS to find all pixels of same color connected to start
         pixels = set()
         queue = deque([(start_r, start_c)])
         visited[start_r, start_c] = True
@@ -112,8 +108,9 @@ class ObjectExtractor:
         
         return pixels
     
-    def _create_object(self, obj_id: int, color: int, pixels: Set[Tuple[int, int]]) -> Object:
-        """Create object with features detected."""
+    def _create_object(self, obj_id: int, color: int, pixels: Set[Tuple[int, int]], grid_shape: Tuple[int, int]) -> Object:
+        # Create object and detect all features
+        grid_height, grid_width = grid_shape
         bbox = self._compute_bbox(pixels)
         area = len(pixels)
         perimeter = self._compute_perimeter(pixels)
@@ -132,21 +129,22 @@ class ObjectExtractor:
         obj.is_hollow = self._is_hollow(pixels, bbox)
         obj.num_holes = self._count_holes(pixels, bbox)
         obj.is_arrow = self._is_arrow(pixels, bbox)
-        obj.is_separator = self._is_separator(pixels, bbox)
+        obj.is_separator = self._is_separator(pixels, bbox, grid_height, grid_width)
         obj.is_spiral = self._is_spiral(pixels, bbox)
         obj.is_triangle = self._is_triangle(pixels, bbox)
         obj.is_grid = self._is_grid(pixels, bbox)
         obj.orientation = self._detect_orientation(pixels, bbox)
+        # print(f"    Features: hollow={obj.is_hollow}, arrow={obj.is_arrow}, spiral={obj.is_spiral}")
         
         return obj
     
     def _compute_bbox(self, pixels: Set[Tuple[int, int]]) -> Tuple[int, int, int, int]:
-        """Compute bounding box."""
+        # Get bounding box coordinates
         rows, cols = zip(*pixels)
         return (min(rows), min(cols), max(rows), max(cols))
     
     def _compute_perimeter(self, pixels: Set[Tuple[int, int]]) -> int:
-        """Rough perimeter estimate: count edges touching background."""
+        # Count edges touching background
         perimeter = 0
         for r, c in pixels:
             for nr, nc in [(r-1, c), (r+1, c), (r, c-1), (r, c+1)]:
@@ -155,7 +153,7 @@ class ObjectExtractor:
         return perimeter
     
     def _is_closed_shape(self, pixels: Set[Tuple[int, int]]) -> bool:
-        """Check if shape forms a closed contour (perimeter vs area ratio)."""
+        # Check for closed contour using perimeter/area ratio
         if len(pixels) < 4:
             return False
         # Rough heuristic: closed shapes have perimeter roughly sqrt(area)
@@ -165,7 +163,7 @@ class ObjectExtractor:
         return (perimeter * perimeter) / area > 10 and (perimeter * perimeter) / area < 25
     
     def _is_hollow(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Check if shape has an empty interior."""
+        # Check if interior is mostly empty
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         
@@ -181,10 +179,11 @@ class ObjectExtractor:
                     interior_empty += 1
         
         interior_total = (h - 2) * (w - 2)
+        # print(f"      Interior: {interior_empty}/{interior_total} empty (ratio: {interior_empty/interior_total:.2f})")
         return interior_total > 0 and interior_empty / interior_total > 0.5
     
     def _count_holes(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> int:
-        """Count connected empty regions completely enclosed by object."""
+        # Count enclosed empty regions (holes)
         min_r, min_c, max_r, max_c = bbox
         interior = set()
         
@@ -217,10 +216,11 @@ class ObjectExtractor:
                 
                 holes += 1
         
+        # print(f"      Found {holes} hole(s)")
         return holes
     
     def _is_arrow(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Detect if shape looks like arrow (pointed tip + shaft)."""
+        # Detect arrow shape (pointed tip + shaft)
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         
@@ -241,28 +241,27 @@ class ObjectExtractor:
         
         return False
     
-    def _is_separator(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Detect if shape is a line/separator (very thin)."""
+    def _is_separator(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int], grid_height: int, grid_width: int) -> bool:
+        # A separator is a thin line that spans most of the grid horizontally or vertically
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         
-        # Separator is very thin relative to length
-        if h == 1 or w == 1:
-            return True
+        # Must be thin in one dimension (width 1 or height 1)
+        if h != 1 and w != 1:
+            return False
         
-        if min(h, w) <= 2 and max(h, w) >= 3:
-            return True
+        # Horizontal line: must span most of the grid width
+        if h == 1:
+            return w >= grid_width * 0.7
+        
+        # Vertical line: must span most of the grid height
+        if w == 1:
+            return h >= grid_height * 0.7
         
         return False
     
     def _is_spiral(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Detect if shape forms a spiral pattern.
-        
-        Spiral heuristics:
-        - High perimeter-to-area ratio (winds around)
-        - Not a simple separator (has width/height balance)
-        - Encloses an interior region
-        """
+        # Detect spiral: high perimeter/area, balanced aspect ratio, empty interior
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         area = len(pixels)
@@ -274,11 +273,13 @@ class ObjectExtractor:
         
         # Spiral should be more square-like (not a long thin line)
         aspect_ratio = max(h, w) / min(h, w)
+        # print(f"      Spiral aspect ratio: {aspect_ratio:.2f}")
         if aspect_ratio > 3:  # Too elongated, probably just a line
             return False
         
         # Spiral has high perimeter relative to area (winds around)
         perim_area_ratio = perimeter / area if area > 0 else 0
+        # print(f"      Spiral perim/area: {perim_area_ratio:.2f}")
         if perim_area_ratio < 0.5:  # Too low, not winding enough
             return False
         
@@ -293,6 +294,7 @@ class ObjectExtractor:
         interior_total = (h - 2) * (w - 2)
         if interior_total > 0:
             interior_empty_ratio = interior_empty / interior_total
+            # print(f"      Spiral interior empty: {interior_empty_ratio:.2f}")
             # Spiral should have significant empty interior (not completely filled)
             if interior_empty_ratio < 0.3:
                 return False
@@ -300,7 +302,7 @@ class ObjectExtractor:
         return True
     
     def _is_triangle(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Rough detection: shape with one point and wide base."""
+        # Detect triangle: one point + wide base
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         area = len(pixels)
@@ -326,7 +328,7 @@ class ObjectExtractor:
         return False
     
     def _is_grid(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        """Detect if shape forms a regular grid pattern."""
+        # Detect regular grid pattern
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         
@@ -356,11 +358,12 @@ class ObjectExtractor:
         # Regular grid has fairly uniform row/col counts
         row_variance = np.var(row_counts) / (avg_row ** 2) if avg_row > 0 else 0
         col_variance = np.var(col_counts) / (avg_col ** 2) if avg_col > 0 else 0
+        # print(f"      Grid variance - row: {row_variance:.3f}, col: {col_variance:.3f}")
         
         return bool(row_variance < 0.3 and col_variance < 0.3)
     
     def _detect_orientation(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> str:
-        """Detect orientation: horizontal, vertical, or diagonal."""
+        # Detect orientation (horizontal/vertical/diagonal)
         min_r, min_c, max_r, max_c = bbox
         h = max_r - min_r + 1
         w = max_c - min_c + 1
