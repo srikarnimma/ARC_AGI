@@ -81,7 +81,7 @@ class ArcAgent:
         try:
             program = self.graph_head(test_graph)
             # print(f"Generated program: {program}")
-            output = self.executor.execute(test_graph, program)
+            output = self.executor.execute(test_input, test_graph, program)
             candidates.append((output, 0.8))
             # print(f"Executed program, generated output shape: {output.shape}")
         except Exception as e:
@@ -97,9 +97,13 @@ class ArcAgent:
                 candidates.append((test_input[r_min:r_max+1, c_min:c_max+1], 0.5))
                 # print(f"Using fallback crop")
         
-        # Rank candidates against training outputs
-        if candidates:
-            ranked = self.ranker.rank(candidates, training_outputs)
-            predictions = [out for out, score in ranked[:3]]
+        # Rank candidates against first training output
+        if candidates and training_outputs:
+            ranked = self.ranker.rank(candidates, training_outputs[0])
+            # rank() returns (output_grid, initial_score, similarity_score)
+            predictions = [out for out, _, _ in ranked[:3]]
+        elif candidates:
+            # No training outputs to rank against, use candidates as-is
+            predictions = [out for out, _ in candidates[:3]]
         
         return predictions[:3] if predictions else [test_input]

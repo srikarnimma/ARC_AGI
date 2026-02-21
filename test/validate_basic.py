@@ -110,7 +110,7 @@ def test_pipeline():
         
         # Execute program
         executor = GraphExecutor()
-        output = executor.execute(graph, program)
+        output = executor.execute(grid, graph, program)
         print(f"   [OK] GraphExecutor.execute() -> {type(output).__name__} shape {output.shape}")
         assert isinstance(output, np.ndarray), f"Expected ndarray, got {type(output)}"
         
