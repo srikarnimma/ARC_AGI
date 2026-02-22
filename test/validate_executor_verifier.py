@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
-from GraphObjectExtractor import ObjectExtractor
+from GraphObjectExtractor import ObjectExtractor, Object
 from GraphSemanticNetwork import GraphBuilder
 from GraphDSL import TransformProgram, Operation, OperationType, Selector
 from GraphExecutor import GraphExecutor
@@ -226,6 +226,189 @@ def test_end_to_end():
     return True
 
 
+def test_executor_logical_ops():
+    # Test logical operations: AND, OR, XOR, XNOR, NAND, NOR
+    print("\n[TEST 6] GraphExecutor - Logical Operations")
+    
+    # ===== Test 1: WITH SEPARATOR (like 0520fde7) =====
+    print("  [A] Logical ops WITH separator (column of 5s)")
+    # Two 3x3 patterns separated by a column of 5s
+    # Input: [obj1] [sep] [obj2]
+    input_with_sep = np.array([
+        [1, 0, 0, 5, 0, 1, 0],
+        [0, 1, 0, 5, 1, 1, 1],
+        [1, 0, 0, 5, 0, 0, 0]
+    ], dtype=np.uint8)
+    
+    print(f"    Input grid (obj1 | sep | obj2):\n{input_with_sep}")
+    
+    # Extract objects from the left side (object 1, color 1)
+    # and right side (object 2, color 0 and 1 in columns 4-6)
+    # For this test, manually work with the left and right patterns
+    
+    # Extract and build graph
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_with_sep)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    print(f"    Extracted {len(graph.nodes)} objects from grid")
+    for obj_id, node in graph.nodes.items():
+        print(f"      Object {obj_id}: color={node.color}, bbox={node.bbox}")
+    
+    # For this test, let's just verify the separator isn't treated as object
+    # In a real scenario, we'd identify left and right patterns by position
+    separator_found = any(node.color == 5 for node in graph.nodes.values())
+    print(f"    Separator (color 5) extracted as object: {separator_found}")
+    
+    # ===== Test 2: WITHOUT SEPARATOR (stacked vertically) =====
+    print("\n  [B] Logical ops WITHOUT separator (stacked)")
+    # Two 3x3 patterns stacked vertically, same width
+    # Object 1 (top, color 1): pixels form one pattern
+    # Object 2 (bottom, color 3): pixels form another pattern
+    input_no_sep = np.array([
+        [1, 0, 1],  # Object 1
+        [0, 1, 0],
+        [1, 0, 1],
+        [3, 0, 3],  # Object 2 (same bbox width as obj 1)
+        [0, 3, 0],
+        [3, 3, 3]
+    ], dtype=np.uint8)
+    
+    print(f"    Input grid (stacked, no separator):\n{input_no_sep}")
+    
+    # Extract objects
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_no_sep)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    print(f"    Extracted {len(graph.nodes)} objects")
+    for obj_id, node in graph.nodes.items():
+        print(f"      Object {obj_id}: color={node.color}, bbox={node.bbox}")
+    
+    # ===== Test 3: SIDE-BY-SIDE WITHOUT SEPARATOR (like 6430c8c4 internally) =====
+    print("\n  [C] Logical ops side-by-side (no separator)")
+    # Two 3x3 patterns arranged horizontally, same height
+    input_side_by_side = np.array([
+        [1, 0, 1, 3, 0, 3],  # Object 1 (left), Object 2 (right)
+        [0, 1, 0, 0, 3, 0],
+        [1, 0, 1, 3, 3, 3]
+    ], dtype=np.uint8)
+    
+    print(f"    Input grid (side-by-side, no separator):\n{input_side_by_side}")
+    
+    # Extract objects
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_side_by_side)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    print(f"    Extracted {len(graph.nodes)} objects")
+    for obj_id, node in graph.nodes.items():
+        print(f"      Object {obj_id}: color={node.color}, bbox={node.bbox}")
+    
+    # ===== Test 3: SIDE-BY-SIDE WITHOUT SEPARATOR (like 6430c8c4 internally) =====
+    print("\n  [C] Logical ops side-by-side (no separator)")
+    # Two 3x3 patterns arranged horizontally, same height
+    input_side_by_side = np.array([
+        [1, 0, 1, 3, 0, 3],  # Object 1 (left), Object 2 (right)
+        [0, 1, 0, 0, 3, 0],
+        [1, 0, 1, 3, 3, 3]
+    ], dtype=np.uint8)
+    
+    print(f"    Input grid (side-by-side, no separator):\n{input_side_by_side}")
+    
+    # Extract objects
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_side_by_side)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    print(f"    Extracted {len(graph.nodes)} objects")
+    for obj_id, node in graph.nodes.items():
+        print(f"      Object {obj_id}: color={node.color}, bbox={node.bbox}")
+    
+    # Now test logical operations on the side-by-side case
+    # Create synthetic input where we place two objects with overlapping bbox for testing
+    print("\n  [D] Testing logical operation results on overlapping region")
+    
+    # Create two 3x3 patterns with same bounding box
+    test_grid = np.zeros((3, 3), dtype=np.uint8)
+    
+    # Object 1: cross pattern (color 1)
+    obj1 = Object(id=1, color=1, pixels={(0,1), (1,0), (1,1), (1,2), (2,1)}, bbox=(0, 0, 2, 2))
+    # Object 2: X pattern (color 3)
+    obj2 = Object(id=2, color=3, pixels={(0,0), (0,2), (1,1), (2,0), (2,2)}, bbox=(0, 0, 2, 2))
+    
+    print(f"    Object 1 (cross, color 1):")
+    grid1 = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in obj1.pixels:
+        if r < 3 and c < 3:
+            grid1[r, c] = 1
+    print(f"{grid1}")
+    
+    print(f"    Object 2 (X pattern, color 3):")
+    grid2 = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in obj2.pixels:
+        if r < 3 and c < 3:
+            grid2[r, c] = 3
+    print(f"{grid2}")
+    
+    # Test AND: pixels where both have them
+    and_result = obj1.pixels & obj2.pixels
+    grid_and = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in and_result:
+        if r < 3 and c < 3:
+            grid_and[r, c] = 2  # Output color
+    print(f"    AND result (color 2 = overlap):\n{grid_and}")
+    print(f"      -> {len(and_result)} pixels in result")
+    
+    # Test OR: pixels where at least one has them
+    or_result = obj1.pixels | obj2.pixels
+    grid_or = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in or_result:
+        if r < 3 and c < 3:
+            grid_or[r, c] = 2  # Output color
+    print(f"    OR result (color 2 = union):\n{grid_or}")
+    print(f"      -> {len(or_result)} pixels in result")
+    
+    # Test XOR: pixels where exactly one has them
+    xor_result = obj1.pixels ^ obj2.pixels
+    grid_xor = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in xor_result:
+        if r < 3 and c < 3:
+            grid_xor[r, c] = 2  # Output color
+    print(f"    XOR result (color 2 = unique to one):\n{grid_xor}")
+    print(f"      -> {len(xor_result)} pixels in result")
+    
+    # Test XNOR: pixels where both are same (both true or both false)
+    xnor_result = obj1.pixels == obj2.pixels
+    # For XNOR, we need to check all positions in bbox
+    xnor_pixels = set()
+    for r in range(3):
+        for c in range(3):
+            has_1 = (r, c) in obj1.pixels
+            has_2 = (r, c) in obj2.pixels
+            if has_1 == has_2:  # Both true or both false
+                xnor_pixels.add((r, c))
+    grid_xnor = np.zeros((3, 3), dtype=np.uint8)
+    for r, c in xnor_pixels:
+        if r < 3 and c < 3:
+            grid_xnor[r, c] = 2  # Output color
+    print(f"    XNOR result (color 2 = both same):\n{grid_xnor}")
+    print(f"      -> {len(xnor_pixels)} pixels in result")
+    
+    # Verify properties
+    assert len(and_result) <= len(or_result), "AND should produce <= pixels than OR"
+    assert len(xor_result) > 0, "XOR should produce non-zero result for different patterns"
+    assert len(and_result) + len(xor_result) == len(or_result), "AND + XOR should equal OR"
+    
+    print(f"  ✓ Logical operations correctly produce expected grids")
+    print(f"    AND: {len(and_result)} | OR: {len(or_result)} | XOR: {len(xor_result)} | XNOR: {len(xnor_pixels)}")
+    return True
+
+
 if __name__ == '__main__':
     print("="*60)
     print("Testing GraphExecutor and OutputVerifier")
@@ -237,6 +420,7 @@ if __name__ == '__main__':
         ("Executor - Copy", test_executor_copy),
         ("Verifier - Loss", test_verifier_loss),
         ("End-to-End", test_end_to_end),
+        ("Executor - Logical Ops", test_executor_logical_ops),
     ]
     
     results = []

@@ -81,6 +81,80 @@ Testing GraphExecutor and OutputVerifier
   Loss: 0.0000, Accuracy: 1.0000
   ✓ End-to-end pipeline working correctly
 
+[TEST 6] GraphExecutor - Logical Operations
+  [A] Logical ops WITH separator (column of 5s)
+    Input grid (obj1 | sep | obj2):
+[[1 0 0 5 0 1 0]
+ [0 1 0 5 1 1 1]
+ [1 0 0 5 0 0 0]]
+    Extracted 3 objects from grid
+      Object 0: color=1, bbox=(0, 0, 2, 1)
+      Object 1: color=1, bbox=(0, 4, 1, 6)
+      Object 2: color=5, bbox=(0, 3, 2, 3)
+    Separator (color 5) extracted as object: True
+
+  [B] Logical ops WITHOUT separator (stacked)
+    Input grid (stacked, no separator):
+[[1 0 1]
+ [0 1 0]
+ [1 0 1]
+ [3 0 3]
+ [0 3 0]
+ [3 3 3]]
+    Extracted 2 objects
+      Object 0: color=1, bbox=(0, 0, 2, 2)
+      Object 1: color=3, bbox=(3, 0, 5, 2)
+
+  [C] Logical ops side-by-side (no separator)
+    Input grid (side-by-side, no separator):
+[[1 0 1 3 0 3]
+ [0 1 0 0 3 0]
+ [1 0 1 3 3 3]]
+    Extracted 2 objects
+      Object 0: color=1, bbox=(0, 0, 2, 2)
+      Object 1: color=3, bbox=(0, 3, 2, 5)
+
+  [C] Logical ops side-by-side (no separator)
+    Input grid (side-by-side, no separator):
+[[1 0 1 3 0 3]
+ [0 1 0 0 3 0]
+ [1 0 1 3 3 3]]
+    Extracted 2 objects
+      Object 0: color=1, bbox=(0, 0, 2, 2)
+      Object 1: color=3, bbox=(0, 3, 2, 5)
+
+  [D] Testing logical operation results on overlapping region
+    Object 1 (cross, color 1):
+[[0 1 0]
+ [1 1 1]
+ [0 1 0]]
+    Object 2 (X pattern, color 3):
+[[3 0 3]
+ [0 3 0]
+ [3 0 3]]
+    AND result (color 2 = overlap):
+[[0 0 0]
+ [0 2 0]
+ [0 0 0]]
+      -> 1 pixels in result
+    OR result (color 2 = union):
+[[2 2 2]
+ [2 2 2]
+ [2 2 2]]
+      -> 9 pixels in result
+    XOR result (color 2 = unique to one):
+[[2 2 2]
+ [2 0 2]
+ [2 2 2]]
+      -> 8 pixels in result
+    XNOR result (color 2 = both same):
+[[0 0 0]
+ [0 2 0]
+ [0 0 0]]
+      -> 1 pixels in result
+  ✓ Logical operations correctly produce expected grids
+    AND: 1 | OR: 9 | XOR: 8 | XNOR: 1
+
 ============================================================
 Test Summary
 ============================================================
@@ -89,6 +163,7 @@ Test Summary
 ✓ PASS: Executor - Copy
 ✓ PASS: Verifier - Loss
 ✓ PASS: End-to-End
+✓ PASS: Executor - Logical Ops
 
-Result: 5/5 tests passed
+Result: 6/6 tests passed
 

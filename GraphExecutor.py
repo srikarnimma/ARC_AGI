@@ -89,6 +89,63 @@ class GraphExecutor:
                 for obj_id in matching_ids:
                     if obj_id in objects_map:
                         del objects_map[obj_id]
+            
+            elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
+                                    OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
+                # Logical operations: combine two objects pixel-wise
+                obj_id_1 = operation.params.get('object_id_1')
+                obj_id_2 = operation.params.get('object_id_2')
+                output_color = operation.params.get('output_color', 2)
+                result_obj_id = operation.params.get('result_id', max(objects_map.keys()) + 1 if objects_map else 1)
+                # print(f"[GraphExecutor] Applying {operation.type.name} on objects {obj_id_1} and {obj_id_2}")
+                
+                if obj_id_1 in objects_map and obj_id_2 in objects_map:
+                    obj1 = objects_map[obj_id_1]
+                    obj2 = objects_map[obj_id_2]
+                    
+                    # Get bbox that encompasses both objects
+                    min_r = min(obj1.bbox[0], obj2.bbox[0])
+                    min_c = min(obj1.bbox[1], obj2.bbox[1])
+                    max_r = max(obj1.bbox[2], obj2.bbox[2])
+                    max_c = max(obj1.bbox[3], obj2.bbox[3])
+                    
+                    # Apply logical operation pixel by pixel
+                    result_pixels = set()
+                    for r in range(min_r, max_r + 1):
+                        for c in range(min_c, max_c + 1):
+                            has_pixel_1 = (r, c) in obj1.pixels
+                            has_pixel_2 = (r, c) in obj2.pixels
+                            
+                            # Apply logical operation
+                            result = False
+                            if operation.type == OperationType.AND:
+                                result = has_pixel_1 and has_pixel_2
+                            elif operation.type == OperationType.OR:
+                                result = has_pixel_1 or has_pixel_2
+                            elif operation.type == OperationType.XOR:
+                                result = has_pixel_1 != has_pixel_2
+                            elif operation.type == OperationType.XNOR:
+                                result = has_pixel_1 == has_pixel_2
+                            elif operation.type == OperationType.NAND:
+                                result = not (has_pixel_1 and has_pixel_2)
+                            elif operation.type == OperationType.NOR:
+                                result = not (has_pixel_1 or has_pixel_2)
+                            
+                            if result:
+                                result_pixels.add((r, c))
+                    
+                    # Create result object or replace existing
+                    if result_obj_id in objects_map:
+                        objects_map[result_obj_id].pixels = result_pixels
+                        objects_map[result_obj_id].color = output_color
+                    else:
+                        result_obj = Object(
+                            id=result_obj_id,
+                            color=output_color,
+                            pixels=result_pixels,
+                            bbox=(min_r, min_c, max_r, max_c)
+                        )
+                        objects_map[result_obj_id] = result_obj
         
         # Render all objects to output grid
         for obj in objects_map.values():

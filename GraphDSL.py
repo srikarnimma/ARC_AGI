@@ -13,6 +13,12 @@ class OperationType(Enum):
     FLIP = "flip"
     COPY = "copy"
     DELETE = "delete"
+    AND = "and"
+    OR = "or"
+    XOR = "xor"
+    XNOR = "xnor"
+    NAND = "nand"
+    NOR = "nor"
 
 
 class Selector(Enum):
