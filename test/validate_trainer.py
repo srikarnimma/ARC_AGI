@@ -22,7 +22,7 @@ def print_grid(grid):
 
 
 def create_synthetic_training_data(num_examples: int = 4):
-    # Create synthetic training data (graph + program pairs)
+    # Create synthetic training data (input_grid, output_grid, graph, program tuples)
     print(f"\n   Creating {num_examples} synthetic training examples...")
     
     training_data = []
@@ -68,8 +68,15 @@ def create_synthetic_training_data(num_examples: int = 4):
     builder = GraphBuilder()
     
     for i, grid in enumerate(grids):
+        # Input grid
+        input_grid = grid.copy()
+        
+        # Create output grid (recolor 1->5)
+        output_grid = grid.copy()
+        output_grid[output_grid == 1] = 5
+        
         # Extract graph
-        objects = extractor.extract(grid)
+        objects = extractor.extract(input_grid)
         graph = builder.build(objects)
         
         # Create simple program (recolor first object)
@@ -81,7 +88,7 @@ def create_synthetic_training_data(num_examples: int = 4):
             )
         ])
         
-        training_data.append((graph, program))
+        training_data.append((input_grid, output_grid, graph, program))
     
     print(f"   [OK] Created {len(training_data)} training examples")
     return training_data
@@ -174,8 +181,8 @@ def test_inference():
         
         print(f"   [OK] Trained model")
         
-        # Now use for inference
-        test_graph = val_data[0][0]
+        # Now use for inference - unpack the full tuple
+        input_grid, output_grid, test_graph, _ = val_data[0]
         program = trainer.inference(test_graph)
         
         print(f"   [OK] Generated program with {len(program.operations)} operations")
@@ -212,9 +219,8 @@ def test_actual_predictions():
         print(f"   Training 20 epochs on single example (should overfit)...")
         trainer.fit(train_data, num_epochs=20)
         
-        # Get predictions on that same example
-        test_graph = train_data[0][0]
-        ground_truth_program = train_data[0][1]
+        # Get predictions on that same example - unpack full tuple
+        input_grid, output_grid, test_graph, ground_truth_program = train_data[0]
         
         # Get predicted program
         predicted_program = trainer.inference(test_graph)

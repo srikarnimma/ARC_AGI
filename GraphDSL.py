@@ -112,11 +112,16 @@ class DSLTokenizer:
                 if param_key in self.vocab:
                     tokens.append(self.vocab[param_key])
                 
-                # Encode parameter value (as integer or discretized)
+                # Encode parameter value (map to vocab range to avoid out-of-bounds)
+                # Map integer values to range [20-99] to fit within vocab
                 if isinstance(param_value, int):
-                    tokens.append(param_value + 102)  # Offset to avoid collisions
+                    # Map 0-9 colors to tokens 20-29, keep small values in range
+                    token_val = min(20 + param_value, 99)  # Clamp to [20, 99]
+                    tokens.append(token_val)
                 elif isinstance(param_value, str):
-                    tokens.append(hash(param_value) % 1000 + 102)
+                    # Hash strings and map to range [30-99]
+                    token_val = 30 + (hash(param_value) % 70)  # Map to [30, 99]
+                    tokens.append(token_val)
         
         # End token
         tokens.append(self.vocab["END"])

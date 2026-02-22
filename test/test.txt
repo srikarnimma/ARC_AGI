@@ -1,169 +1,52 @@
-============================================================
-Testing GraphExecutor and OutputVerifier
-============================================================
 
-[TEST 1] GraphExecutor - Recolor Operation
-  Input grid:
-[[0 0 0 0 0]
- [0 1 1 1 0]
- [0 1 1 1 0]
- [0 1 1 1 0]
- [0 0 0 0 0]]
-  Extracted 1 objects
-  Output grid:
-[[0 0 0 0 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 0 0 0 0]]
-  ✓ Recolor successful: 9 pixels changed from blue to red
+1. Testing training loop...
 
-[TEST 2] GraphExecutor - Translate Operation
-  Input grid:
-[[3 3 0 0 0]
- [3 3 0 0 0]
- [0 0 0 0 0]
- [0 0 0 0 0]
- [0 0 0 0 0]]
-  Output grid:
-[[0 0 0 0 0]
- [0 0 0 0 0]
- [0 0 3 3 0]
- [0 0 3 3 0]
- [0 0 0 0 0]]
-  ✓ Translate successful: object moved from (0:2,0:2) to (2:4,2:4)
+   Creating 3 synthetic training examples...
+   [OK] Created 3 training examples
 
-[TEST 3] GraphExecutor - Copy Operation
-  Input grid:
-[[4 4 0 0 0 0 0]
- [4 4 0 0 0 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 0 0 0 0]]
-  Output grid:
-[[4 4 0 0 0 0 0]
- [4 4 0 0 0 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 4 4 0 0]
- [0 0 0 4 4 0 0]
- [0 0 0 0 0 0 0]
- [0 0 0 0 0 0 0]]
-  ✓ Copy successful: created duplicate at offset
+   Creating 1 synthetic training examples...
+   [OK] Created 1 training examples
+   [OK] Created trainer
+   Starting training...
+   [OK] Training completed
+   Train losses: ['4.1144', '2.6674', '1.9710']
+   Val losses: ['2.8302', '2.0239', '1.7661']
+   Loss change: 4.1144 -> 1.9710
 
-[TEST 4] OutputVerifier - Loss Computation
-  Loss (perfect match): 0.0000
-  Loss (4 pixels differ): 0.0356
-  Pixel accuracy (perfect): 1.0000
-  Pixel accuracy (partial): 0.8400
-  ✓ Loss and accuracy metrics working correctly
+2. Testing weight saving and loading...
 
-[TEST 5] End-to-End: Extract -> Execute -> Verify
-  Input:
-[[0 0 0 0 0]
- [0 1 1 1 0]
- [0 1 1 1 0]
- [0 1 1 1 0]
- [0 0 0 0 0]]
-  Ground truth:
-[[0 0 0 0 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 0 0 0 0]]
-  Predicted:
-[[0 0 0 0 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 2 2 2 0]
- [0 0 0 0 0]]
-  Loss: 0.0000, Accuracy: 1.0000
-  ✓ End-to-end pipeline working correctly
+   Creating 2 synthetic training examples...
+   [OK] Created 2 training examples
+   [OK] Trained model
+   [OK] Saved checkpoint to /tmp/test_checkpoint.pt
+   [OK] Loaded checkpoint
+   [OK] Training history preserved
 
-[TEST 6] GraphExecutor - Logical Operations
-  [A] Logical ops WITH separator (column of 5s)
-    Input grid (obj1 | sep | obj2):
-[[1 0 0 5 0 1 0]
- [0 1 0 5 1 1 1]
- [1 0 0 5 0 0 0]]
-    Extracted 3 objects from grid
-      Object 0: color=1, bbox=(0, 0, 2, 1)
-      Object 1: color=1, bbox=(0, 4, 1, 6)
-      Object 2: color=5, bbox=(0, 3, 2, 3)
-    Separator (color 5) extracted as object: True
+3. Testing inference mode...
 
-  [B] Logical ops WITHOUT separator (stacked)
-    Input grid (stacked, no separator):
-[[1 0 1]
- [0 1 0]
- [1 0 1]
- [3 0 3]
- [0 3 0]
- [3 3 3]]
-    Extracted 2 objects
-      Object 0: color=1, bbox=(0, 0, 2, 2)
-      Object 1: color=3, bbox=(3, 0, 5, 2)
+   Creating 2 synthetic training examples...
+   [OK] Created 2 training examples
 
-  [C] Logical ops side-by-side (no separator)
-    Input grid (side-by-side, no separator):
-[[1 0 1 3 0 3]
- [0 1 0 0 3 0]
- [1 0 1 3 3 3]]
-    Extracted 2 objects
-      Object 0: color=1, bbox=(0, 0, 2, 2)
-      Object 1: color=3, bbox=(0, 3, 2, 5)
+   Creating 1 synthetic training examples...
+   [OK] Created 1 training examples
+   [OK] Trained model
+   [OK] Generated program with 0 operations
+   [OK] Saved weights to /tmp/test_weights.pt
+   [OK] Loaded weights into new model
 
-  [C] Logical ops side-by-side (no separator)
-    Input grid (side-by-side, no separator):
-[[1 0 1 3 0 3]
- [0 1 0 0 3 0]
- [1 0 1 3 3 3]]
-    Extracted 2 objects
-      Object 0: color=1, bbox=(0, 0, 2, 2)
-      Object 1: color=3, bbox=(0, 3, 2, 5)
+4. Testing actual token predictions on overfit example...
 
-  [D] Testing logical operation results on overlapping region
-    Object 1 (cross, color 1):
-[[0 1 0]
- [1 1 1]
- [0 1 0]]
-    Object 2 (X pattern, color 3):
-[[3 0 3]
- [0 3 0]
- [3 0 3]]
-    AND result (color 2 = overlap):
-[[0 0 0]
- [0 2 0]
- [0 0 0]]
-      -> 1 pixels in result
-    OR result (color 2 = union):
-[[2 2 2]
- [2 2 2]
- [2 2 2]]
-      -> 9 pixels in result
-    XOR result (color 2 = unique to one):
-[[2 2 2]
- [2 0 2]
- [2 2 2]]
-      -> 8 pixels in result
-    XNOR result (color 2 = both same):
-[[0 0 0]
- [0 2 0]
- [0 0 0]]
-      -> 1 pixels in result
-  ✓ Logical operations correctly produce expected grids
-    AND: 1 | OR: 9 | XOR: 8 | XNOR: 1
+   Creating 1 synthetic training examples...
+   [OK] Created 1 training examples
+   Training 20 epochs on single example (should overfit)...
+   [INFO] Ground truth:
+           Op 0: recolor selector=by_color params={'color': 1, 'new_color': 5}
+   [INFO] Predicted program:
+           Op 0: recolor selector=by_shape params={'param_2': 18, 'param_3': 21, 'param_4': 25}
+   [INFO] Top 10 predicted tokens: [0, 13, 18, 21, 25, 100, 100, 100, 100, 100]
+   [INFO] Token logits shape: torch.Size([1, 20, 102])
+   [INFO] Final loss: 0.033643
+   [OK] Model learned (loss decreased from 4.633152 to 0.033643)
 
-============================================================
-Test Summary
-============================================================
-✓ PASS: Executor - Recolor
-✓ PASS: Executor - Translate
-✓ PASS: Executor - Copy
-✓ PASS: Verifier - Loss
-✓ PASS: End-to-End
-✓ PASS: Executor - Logical Ops
-
-Result: 6/6 tests passed
-
+==================================================
+SUCCESS: All trainer tests passed!
