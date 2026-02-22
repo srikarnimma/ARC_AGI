@@ -10,15 +10,23 @@ class OperationType(Enum):
     RECOLOR = "recolor"
     TRANSLATE = "translate"
     ROTATE = "rotate"
+    ROTATE_GRID = "rotate_grid"
     FLIP = "flip"
+    FLIP_GRID = "flip_grid"
+    MIRROR_VERTICAL = "mirror_vertical"
+    MIRROR_HORIZONTAL = "mirror_horizontal"
     COPY = "copy"
     DELETE = "delete"
+    HOLLOW = "hollow"
+    CROP_NONZERO_BBOX = "crop_nonzero_bbox"
+    AND_SPLIT = "and_split"
     AND = "and"
     OR = "or"
     XOR = "xor"
     XNOR = "xnor"
     NAND = "nand"
     NOR = "nor"
+    SWAP_COLORS = "swap_colors"
 
 
 class Selector(Enum):

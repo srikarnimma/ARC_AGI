@@ -51,19 +51,27 @@ class ObjectExtractor:
         
         for color in colors:
             color_mask = (grid == color) & ~visited
-            
+            components: List[Set[Tuple[int, int]]] = []
+
             # BFS to find connected components for this color
             for r in range(grid.shape[0]):
                 for c in range(grid.shape[1]):
                     if color_mask[r, c]:
                         pixels = self._bfs(grid, visited, r, c, color)
-                        # Filter out single-pixel noise
-                        if pixels and len(pixels) >= 2:
-                            # print(f"  Color {color}: found component with {len(pixels)} pixels")
-                            grid_height, grid_width = grid.shape
-                            obj = self._create_object(obj_id, color, pixels, (grid_height, grid_width))
-                            objects.append(obj)
-                            obj_id += 1
+                        if pixels:
+                            components.append(pixels)
+
+            has_large_component = any(len(pixels) >= 2 for pixels in components)
+
+            for pixels in components:
+                # Filter out isolated single-pixel noise only when larger components exist.
+                if len(pixels) < 2 and has_large_component:
+                    continue
+                # print(f"  Color {color}: found component with {len(pixels)} pixels")
+                grid_height, grid_width = grid.shape
+                obj = self._create_object(obj_id, color, pixels, (grid_height, grid_width))
+                objects.append(obj)
+                obj_id += 1
         
         # Always add grid boundary object (metadata for entire grid)
         grid_height, grid_width = grid.shape

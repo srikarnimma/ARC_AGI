@@ -13,6 +13,7 @@ from GraphExecutor import GraphExecutor
 from GraphEditTransformer import GraphHead
 from GraphTTT import GraphHeadTTT
 from OutputVerifier import OutputVerifier, CandidateRanker
+from AStarProgramSearch import AStarProgramSearch
 
 
 class ArcAgent:
@@ -32,6 +33,16 @@ class ArcAgent:
         self.graph_builder = GraphBuilder()
         self.executor = GraphExecutor()
         self.tokenizer = DSLTokenizer()
+        self.astar_search = AStarProgramSearch(
+            executor=self.executor,
+            verifier=OutputVerifier(),
+            max_depth=3,
+            max_expansions=400,
+            weight=1.5,
+            offsets=[-1, 1],
+            allow_translate=True,
+            allow_copy=False,
+        )
         
         # Neural components
         self.graph_head = GraphHead(vocab_size=100, hidden_dim=256).to(self.device)
@@ -76,8 +87,25 @@ class ArcAgent:
             # print(f"Test-time training failed: {e}")
             pass
         
-        # Generate from graph head
+        # A* program search using training pairs
         candidates = []
+        try:
+            training_pairs = []
+            for inp, out in zip(training_inputs, training_outputs):
+                objects = self.extractor.extract(inp)
+                graph = self.graph_builder.build(objects)
+                training_pairs.append((inp, out, graph))
+
+            result = self.astar_search.search(training_pairs)
+            if result is not None:
+                program = result.program
+                output = self.executor.execute(test_input, test_graph, program)
+                initial_score = 1.0 - min(1.0, result.loss)
+                candidates.append((output, initial_score))
+        except Exception:
+            pass
+
+        # Generate from graph head
         try:
             program = self.graph_head(test_graph)
             # print(f"Generated program: {program}")

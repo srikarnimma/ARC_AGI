@@ -409,6 +409,111 @@ def test_executor_logical_ops():
     return True
 
 
+def test_executor_mirror():
+    """Test executor: mirror operations (vertical and horizontal)"""
+    print("\n[TEST 7] GraphExecutor - Mirror Operations")
+    
+    # ===== Test 1: MIRROR_VERTICAL (left-right symmetry) =====
+    print("\n  [A] Mirror Vertical - Create left-right symmetry")
+    
+    # Create 3x6 grid with a pattern on the left half
+    input_grid = np.array([
+        [1, 0, 0, 0, 0, 0],
+        [1, 1, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0],
+    ], dtype=np.uint8)
+    
+    print(f"  Input grid (3x6, pattern on left):\n{input_grid}")
+    
+    # Extract objects and build graph
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_grid)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    # Create program: mirror vertically
+    program = TransformProgram(operations=[
+        Operation(
+            type=OperationType.MIRROR_VERTICAL,
+            selector=Selector.ALL,
+            params={}
+        )
+    ])
+    
+    # Execute
+    executor = GraphExecutor()
+    output_grid = executor.execute(input_grid, graph, program)
+    
+    print(f"  Output grid after vertical mirror:\n{output_grid}")
+    
+    # Expected output: left half stays, right half is flipped version of left
+    expected_output = np.array([
+        [1, 0, 0, 0, 0, 1],
+        [1, 1, 0, 0, 1, 1],
+        [1, 0, 0, 0, 0, 1],
+    ], dtype=np.uint8)
+    
+    print(f"  Expected:\n{expected_output}")
+    
+    # Verify exact match
+    assert np.array_equal(output_grid, expected_output), f"Output does not match expected.\nGot:\n{output_grid}"
+    print(f"  ✓ Mirror vertical correct: left half preserved, right half is flipped copy")
+    
+    # ===== Test 2: MIRROR_HORIZONTAL (top-bottom symmetry) =====
+    print("\n  [B] Mirror Horizontal - Create top-bottom symmetry")
+    
+    # Create 6x3 grid with a pattern on the bottom half
+    input_grid_h = np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+    ], dtype=np.uint8)
+    
+    print(f"  Input grid (6x3, pattern on bottom):\n{input_grid_h}")
+    
+    # Extract objects and build graph
+    extractor = ObjectExtractor()
+    objects = extractor.extract(input_grid_h)
+    builder = GraphBuilder()
+    graph = builder.build(objects)
+    
+    # Create program: mirror horizontally
+    program = TransformProgram(operations=[
+        Operation(
+            type=OperationType.MIRROR_HORIZONTAL,
+            selector=Selector.ALL,
+            params={}
+        )
+    ])
+    
+    # Execute
+    executor = GraphExecutor()
+    output_grid_h = executor.execute(input_grid_h, graph, program)
+    
+    print(f"  Output grid after horizontal mirror:\n{output_grid_h}")
+    
+    # Expected: bottom half flipped and placed on top, then original bottom
+    expected_output_h = np.array([
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+    ], dtype=np.uint8)
+    
+    print(f"  Expected:\n{expected_output_h}")
+    
+    # Verify exact match
+    assert np.array_equal(output_grid_h, expected_output_h), f"Output does not match expected.\nGot:\n{output_grid_h}"
+    print(f"  ✓ Mirror horizontal correct: bottom half flipped to top, original bottom preserved")
+    
+    return True
+
+
 if __name__ == '__main__':
     print("="*60)
     print("Testing GraphExecutor and OutputVerifier")
@@ -421,6 +526,7 @@ if __name__ == '__main__':
         ("Verifier - Loss", test_verifier_loss),
         ("End-to-End", test_end_to_end),
         ("Executor - Logical Ops", test_executor_logical_ops),
+        ("Executor - Mirror", test_executor_mirror),
     ]
     
     results = []
