@@ -1,6 +1,4 @@
-"""
-Test-time training: fine-tune models on task-specific examples.
-"""
+# Test-time training: fine-tune models on task-specific examples
 
 import torch
 import torch.nn as nn
@@ -8,7 +6,7 @@ from typing import List, Tuple
 
 
 class GraphHeadTTT:
-    """Fine-tune graph head on training pairs."""
+    # Fine-tune graph head on training pairs
     
     def __init__(self, graph_head: nn.Module, learning_rate: float = 1e-3, num_steps: int = 20):
         self.model = graph_head
@@ -21,7 +19,7 @@ class GraphHeadTTT:
 
 
 class GridHeadTTT:
-    """Fine-tune grid head on training pairs."""
+    # Fine-tune grid head on training pairs
     
     def __init__(self, grid_head: nn.Module, learning_rate: float = 5e-4, num_steps: int = 10):
         self.model = grid_head

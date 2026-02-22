@@ -126,15 +126,13 @@ class GraphBuilder:
             relations.append(RelationType.RIGHT)
         
         # Inside/Contains (containment)
-        # obj1 is INSIDE obj2 if obj1's bbox is fully within obj2's bbox
+        # obj1 is INSIDE obj2 (based on bbox)
         if min_r1 >= min_r2 and max_r1 <= max_r2 and min_c1 >= min_c2 and max_c1 <= max_c2:
-            # Avoid self-containment (if bboxes are identical)
-            if not (min_r1 == min_r2 and max_r1 == max_r2 and min_c1 == min_c2 and max_c1 == max_c2):
+            if not (min_r1 == min_r2 and max_r1 == max_r2 and min_c1 == min_c2 and max_c1 == max_c2): # Avoid self-containment
                 # print(f"  Object {obj1.id} is INSIDE {obj2.id}")
                 relations.append(RelationType.INSIDE)
-        # obj2 is INSIDE obj1 if obj2's bbox is fully within obj1's bbox
+        # obj2 is INSIDE obj1
         elif min_r2 >= min_r1 and max_r2 <= max_r1 and min_c2 >= min_c1 and max_c2 <= max_c1:
-            # Avoid self-containment (if bboxes are identical)
             if not (min_r1 == min_r2 and max_r1 == max_r2 and min_c1 == min_c2 and max_c1 == max_c2):
                 # print(f"  Object {obj2.id} is INSIDE {obj1.id}")
                 relations.append(RelationType.INSIDE)
