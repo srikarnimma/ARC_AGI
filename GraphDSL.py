@@ -1,7 +1,6 @@
 # DSL for transformation programs
 # Defines operations, selectors, and tokenization for programs
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Any
 
@@ -38,18 +37,18 @@ class Selector(Enum):
     BY_DIRECTION = "by_direction"
 
 
-@dataclass
 class Operation:
-    # Single transformation operation
-    type: OperationType
-    selector: Selector
-    params: Dict[str, Any]
+    # A transformation operation
+    def __init__(self, type: OperationType, selector: Selector, params: Dict[str, Any]):
+        self.type = type
+        self.selector = selector
+        self.params = params
 
 
-@dataclass
 class TransformProgram:
     # Sequence of operations
-    operations: List[Operation]
+    def __init__(self, operations: List[Operation]):
+        self.operations = operations
 
 
 class DSLTokenizer:

@@ -5,11 +5,11 @@ from typing import List, Tuple
 
 
 class OutputVerifier:
-    # Computes loss and similarity metrics between grids
+    # Computes loss & similarity metrics between grids
     
     def compute_loss(self, predicted: np.ndarray, ground_truth: np.ndarray) -> float:
-        # Loss is normalized Hamming distance [0, 1] where 0 = perfect match
-        # print(f"[OutputVerifier] Computing loss between {predicted.shape} and {ground_truth.shape} grids")
+        # Loss is normalized hamming distance [0, 1] where 0 = perfect match
+        # print(f"[OutputVerifier] Computing loss between {predicted.shape} and {ground_truth.shape}")
         # Handle shape mismatch
         if predicted.shape != ground_truth.shape:
             min_h = min(predicted.shape[0], ground_truth.shape[0])
@@ -21,7 +21,7 @@ class OutputVerifier:
         diff = np.abs(predicted.astype(np.int32) - ground_truth.astype(np.int32))
         total_error = np.sum(diff)
         
-        # Normalize: max error is all pixels with value 9 different
+        # Normalize: max error is all pixels w value 9 different
         num_pixels = predicted.size
         max_error = num_pixels * 9
         
@@ -47,7 +47,7 @@ class OutputVerifier:
     def structural_similarity(self, predicted: np.ndarray, ground_truth: np.ndarray, 
                              window_size: int = 5) -> float:
         # Compute structural similarity using local pattern comparison
-        # print(f"[OutputVerifier] Computing SSIM with window size {window_size}")
+        # print(f"[OutputVerifier] Computing SSIM")
         if predicted.shape != ground_truth.shape:
             min_h = min(predicted.shape[0], ground_truth.shape[0])
             min_w = min(predicted.shape[1], ground_truth.shape[1])
@@ -62,7 +62,7 @@ class OutputVerifier:
                 pred_patch = predicted[r:r+window_size, c:c+window_size]
                 truth_patch = ground_truth[r:r+window_size, c:c+window_size]
                 
-                # Simple patch similarity: percentage of matching pixels
+                # Simple patch similarity: % of matching pixels
                 match = np.sum(pred_patch == truth_patch)
                 total = window_size * window_size
                 patch_sim = float(match) / float(total)
@@ -73,13 +73,13 @@ class OutputVerifier:
             # print(f"[OutputVerifier] SSIM: {result:.4f}")
             return result
         else:
-            # Grids too small for window
+            # Grids too small for the window
             return self.pixel_accuracy(predicted, ground_truth)
     
     def object_wise_accuracy(self, predicted: np.ndarray, ground_truth: np.ndarray, 
                             num_colors: int = 10) -> Tuple[float, int, int]:
         # Compute accuracy by color (object-wise)
-        # print(f"[OutputVerifier] Computing object-wise accuracy for {num_colors} colors")
+        # print(f"[OutputVerifier] Computing object-wise accuracy")
         if predicted.shape != ground_truth.shape:
             min_h = min(predicted.shape[0], ground_truth.shape[0])
             min_w = min(predicted.shape[1], ground_truth.shape[1])
@@ -93,9 +93,9 @@ class OutputVerifier:
             pred_mask = (predicted == color)
             truth_mask = (ground_truth == color)
             
-            # Both predict and ground truth have this color at same location
+            # Both pred & ground truth have this color at same place
             correct = np.sum(pred_mask & truth_mask)
-            total = np.sum(truth_mask)  # Count ground truth pixels
+            total = np.sum(truth_mask)  # count ground truth pixels
             
             total_correct += correct
             total_pixels += total
@@ -123,7 +123,7 @@ class CandidateRanker:
             pixel_acc = self.verifier.pixel_accuracy(output, ground_truth)
             structural = self.verifier.structural_similarity(output, ground_truth)
             
-            # Combined score: prefer high similarity and low loss
+            # Combined score: prefer high similarity & low loss
             combined = (pixel_acc + structural) / 2.0
             ranked.append((output, initial_score, combined))
         

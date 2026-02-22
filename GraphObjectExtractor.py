@@ -1,46 +1,46 @@
 # Object extraction utilities
-# Takes a grid (numpy array) and extracts objects with features
+# Takes a grid (numpy array) and extracts objects w features
 
 import numpy as np
-from dataclasses import dataclass, field
+
 from typing import List, Set, Tuple
 from scipy import ndimage
 from collections import deque
 
 
 # Represents a single object/component found in a grid
-@dataclass
 class Object:
-    id: int
-    color: int
-    pixels: Set[Tuple[int, int]]
-    bbox: Tuple[int, int, int, int]  # (min_r, min_c, max_r, max_c)
-    
-    # Flags
-    is_grid_boundary: bool = False  # if this is the grid canvas itself
-    
-    # Features
-    is_closed_shape: bool = False
-    num_holes: int = 0
-    is_hollow: bool = False
-    is_arrow: bool = False
-    is_separator: bool = False
-    is_spiral: bool = False
-    is_triangle: bool = False
-    is_grid: bool = False
-    orientation: str = "unknown"  # "horizontal", "vertical", "diagonal", "unknown"
-    area: int = 0
-    perimeter: int = 0
+    def __init__(self, id: int, color: int, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int], is_grid_boundary: bool = False, area: int = 0, perimeter: int = 0):
+        self.id = id
+        self.color = color
+        self.pixels = pixels
+        self.bbox = bbox  # (min_r, min_c, max_r, max_c)
+        
+        # Flags
+        self.is_grid_boundary = is_grid_boundary
+        
+        # Features
+        self.is_closed_shape = False
+        self.num_holes = 0
+        self.is_hollow = False
+        self.is_arrow = False
+        self.is_separator = False
+        self.is_spiral = False
+        self.is_triangle = False
+        self.is_grid = False
+        self.orientation = "unknown"  # "horizontal", "vertical", "diagonal", "unknown"
+        self.area = area
+        self.perimeter = perimeter
 
 # Main extractor class
-# Reads a grid and outputs a list of detected objects
+# Reads a grid and outputs detected objects
 class ObjectExtractor:
     def __init__(self, connectivity: str = "8"):
         self.connectivity = connectivity
     
     def extract(self, grid: np.ndarray) -> List[Object]:
-        # Extract objects from grid by color and detect features
-        # Returns all objects (colored + grid boundary)
+        # Extract objects from grid by color & detect features
+        # Returns all objs (colored + grid boundary)
         objects: List[Object] = []
         visited = np.zeros_like(grid, dtype=bool)
         obj_id = 0

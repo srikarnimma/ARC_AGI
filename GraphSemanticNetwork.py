@@ -1,7 +1,6 @@
 # Semantic graph for object relationships
 # Builds spatial graph from extracted objects
 
-from dataclasses import dataclass
 from typing import List
 from enum import Enum
 
@@ -19,20 +18,20 @@ class RelationType(Enum):
     CONTAINS = "contains"
 
 
-@dataclass
 class GraphNode:
-    #Object node in semantic graph
-    id: int
-    color: int
-    bbox: tuple
+    # Object node in the graph
+    def __init__(self, id: int, color: int, bbox: tuple):
+        self.id = id
+        self.color = color
+        self.bbox = bbox
 
 
-@dataclass
 class Relation:
-    #Edge in semantic graph
-    type: RelationType
-    source_id: int
-    target_id: int
+    # Relationship between two objects
+    def __init__(self, type: RelationType, source_id: int, target_id: int):
+        self.type = type
+        self.source_id = source_id
+        self.target_id = target_id
 
 
 class SemanticGraph:
@@ -44,10 +43,10 @@ class SemanticGraph:
 
 
 class GraphBuilder:
-    # Input: list of objects -> Output: SemanticGraph
+    # Builds a semantic graph from a list of objects
     
     def build(self, objects: List[Object]) -> SemanticGraph:
-        # Build semantic graph from objects
+        # Construct semantic graph from objs
         # Extract nodes and infer spatial relationships
         graph = SemanticGraph()
         

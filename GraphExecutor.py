@@ -10,29 +10,29 @@ from GraphObjectExtractor import Object
 
 
 class GraphExecutor:
-    # Executes transformation programs on grids using semantic graph information
+    # Executes transform programs on grids using semantic graph info
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
-        # Execute a transformation program on an input grid
+        # Run a transformation program on an input grid
         grid_height, grid_width = input_grid.shape
-        # print(f"[GraphExecutor] Executing program with {len(program.operations)} operations on {grid_height}x{grid_width} grid")
+        # print(f"[GraphExecutor] Executing {len(program.operations)} ops on {grid_height}x{grid_width} grid")
         
         # Start with blank output
         output_grid = np.zeros_like(input_grid)
         
-        # Create mutable copies of objects from the graph
+        # Create mutable copies of graph objects
         # Map object_id -> modified_object
         objects_map = {}
-        # print(f"[GraphExecutor] Reconstructing {len(graph.nodes)} objects from graph")
+        # print(f"[GraphExecutor] Reconstructing {len(graph.nodes)} objs from graph")
         for obj_id, graph_node in graph.nodes.items():
-            # Reconstruct object from graph node
+            # Reconstruct obj from graph node
             obj = Object(
                 id=obj_id,
                 color=graph_node.color,
                 pixels=set(),  # Will be inferred from grid
                 bbox=graph_node.bbox
             )
-            # Extract pixels from input grid in this bounding box
+            # Extract pixels from input grid in this bbox
             min_r, min_c, max_r, max_c = graph_node.bbox
             for r in range(max(0, min_r), min(grid_height, max_r + 1)):
                 for c in range(max(0, min_c), min(grid_width, max_c + 1)):
@@ -40,13 +40,13 @@ class GraphExecutor:
                         obj.pixels.add((r, c))
             objects_map[obj_id] = obj
         
-        # Apply each operation in sequence
+        # Apply each op in seq
         for operation in program.operations:
             # print(f"[GraphExecutor] Applying {operation.type.name}")
-            # Find matching objects
+            # Find matching objs
             matching_ids = self._select_objects(objects_map, operation.selector, operation.params)
             
-            # Apply operation
+            # Apply the op
             if operation.type == OperationType.RECOLOR:
                 new_color = operation.params.get('new_color', 0)
                 for obj_id in matching_ids:

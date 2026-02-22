@@ -1,5 +1,4 @@
 import heapq
-from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -10,11 +9,12 @@ from GraphSemanticNetwork import SemanticGraph
 from OutputVerifier import OutputVerifier
 
 
-@dataclass(frozen=True)
 class SearchResult:
-    program: TransformProgram
-    loss: float
-    expansions: int
+    # Holds the result of an A* search
+    def __init__(self, program: TransformProgram, loss: float, expansions: int):
+        self.program = program
+        self.loss = loss
+        self.expansions = expansions
 
 
 def _program_signature(program: TransformProgram) -> Tuple:
@@ -26,7 +26,7 @@ def _program_signature(program: TransformProgram) -> Tuple:
 
 
 class AStarProgramSearch:
-    """A* search over DSL programs to fit training input/output pairs."""
+    # A* search for DSL programs that fit training examples
     def __init__(
         self,
         executor: GraphExecutor,
@@ -144,7 +144,7 @@ class AStarProgramSearch:
 
         actions: List[Operation] = []
 
-        # Recolor operations
+        # Try recoloring each color combo
         for from_color in colors_in:
             for to_color in palette:
                 if to_color == from_color:
@@ -157,7 +157,7 @@ class AStarProgramSearch:
                     )
                 )
 
-        # Flip operations
+        # add flip ops (horizontal & vertical)
         for direction in ["horizontal", "vertical"]:
             actions.append(
                 Operation(
@@ -174,7 +174,7 @@ class AStarProgramSearch:
                 )
             )
         
-        # Mirror operations (create symmetry around center axis)
+        # Mirror ops to create symmetry
         actions.append(
             Operation(
                 type=OperationType.MIRROR_VERTICAL,
@@ -190,7 +190,7 @@ class AStarProgramSearch:
             )
         )
 
-        # Rotate operations
+        # Rotation options
         for angle in [90, 180, 270]:
             actions.append(
                 Operation(
@@ -207,7 +207,7 @@ class AStarProgramSearch:
                 )
             )
 
-        # Translate operations (small offsets)
+        # Small translations
         if self.allow_translate:
             for offset_r in self.offsets:
                 for offset_c in self.offsets:
@@ -219,7 +219,7 @@ class AStarProgramSearch:
                         )
                     )
 
-        # Delete operations by color
+        # Delete by color
         for color in colors_in:
             actions.append(
                 Operation(
@@ -229,7 +229,7 @@ class AStarProgramSearch:
                 )
             )
 
-        # Hollow operations
+        # Hollowing (empty out shapes)
         actions.append(
             Operation(
                 type=OperationType.HOLLOW,
@@ -246,7 +246,7 @@ class AStarProgramSearch:
                 )
             )
 
-        # Crop operations
+        # Cropping to non-zero bbox
         actions.append(
             Operation(
                 type=OperationType.CROP_NONZERO_BBOX,
@@ -255,7 +255,7 @@ class AStarProgramSearch:
             )
         )
 
-        # Separator-based logical operations between subgrids (auto-detect separator)
+        # Logical ops between subgrids (auto-detect the separator)
         output_colors = [c for c in palette if c != 0]
         logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR']
         split_directions = ['ROW', 'COL']
@@ -270,7 +270,7 @@ class AStarProgramSearch:
                         )
                     )
 
-        # Copy operations by color with small offsets
+        # Copy objs with small offsets
         if self.allow_copy:
             for color in colors_in:
                 for offset_r in self.offsets:
@@ -283,7 +283,7 @@ class AStarProgramSearch:
                             )
                         )
 
-        # Logical operations only when object IDs are consistent across graphs
+        # Object-based ops (only when obj IDs are consistent)
         if training_pairs:
             node_id_sets = [set(pair[2].nodes.keys()) for pair in training_pairs]
             if all(node_id_sets[0] == node_ids for node_ids in node_id_sets[1:]):
@@ -304,7 +304,7 @@ class AStarProgramSearch:
                                 )
                             )
                 
-                # Swap colors operation (no output_color needed, just swaps existing colors)
+                # Swap colors btw objects
                 for idx, obj_id_1 in enumerate(object_ids):
                     for obj_id_2 in object_ids[idx + 1:]:
                         actions.append(
@@ -320,8 +320,7 @@ class AStarProgramSearch:
 
         return actions
 
-    @staticmethod
-    def _collect_colors(grids: Iterable[np.ndarray]) -> set[int]:
+    def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:
         colors: set[int] = set()
         for grid in grids:
             if grid.size == 0:

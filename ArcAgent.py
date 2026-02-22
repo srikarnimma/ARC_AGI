@@ -17,18 +17,18 @@ from AStarProgramSearch import AStarProgramSearch
 
 
 class ArcAgent:
-    # Main agent orchestrating the solve pipeline
-    # 1. Extract objects from grid
-    # 2. Build semantic graph from objects
+    # Main agent that orchestrates the solve pipeline
+    # 1. Extract objs from grid
+    # 2. Build semantic graph from objs
     # 3. Test-time training on examples
-    # 4. Generate program with graph head
+    # 4. Generate program w/ graph head
     # 5. Execute program to produce output
     # 6. Verify against training outputs
     
     def __init__(self):
         self.device = torch.device('cpu')
         
-        # Procedural components (non-neural)
+        # Procedural components (no neural nets)
         self.extractor = ObjectExtractor()
         self.graph_builder = GraphBuilder()
         self.executor = GraphExecutor()
@@ -44,20 +44,20 @@ class ArcAgent:
             allow_copy=False,
         )
         
-        # Neural components
+        # Neural stuff
         self.graph_head = GraphHead(vocab_size=100, hidden_dim=256).to(self.device)
         
         # Test-time training adapter
         self.graph_ttt = GraphHeadTTT(self.graph_head)
         
-        # Output verification and ranking
+        # Output verification & ranking
         self.verifier = OutputVerifier()
         self.ranker = CandidateRanker(self.verifier)
 
     def make_predictions(self, arc_problem: ArcProblem) -> list[np.ndarray]:
         predictions: list[np.ndarray] = []
         
-        # Get data
+        # Grab the training & test data
         training_data = arc_problem.training_set()
         training_inputs = [data.get_input_data().data() for data in training_data]
         training_outputs = [data.get_output_data().data() for data in training_data]
@@ -65,24 +65,24 @@ class ArcAgent:
         test_data = arc_problem.test_set()
         test_input = test_data.get_input_data().data()
         
-        # Extract objects from test input
+        # Pull out objs from test input
         test_objects = self.extractor.extract(test_input)
         # print(f"Test objects: {len(test_objects)}")
         
-        # Build semantic graph from objects
+        # Build graph from the objs
         test_graph = self.graph_builder.build(test_objects)
         # print(f"Test graph built")
         
-        # Extract objects from training examples for test-time training
+        # Extract objs from training examples for test-time training
         try:
             train_objects_list = [self.extractor.extract(inp) for inp in training_inputs]
             # print(f"Extracted objects from {len(train_objects_list)} training examples")
             
             train_graphs = [self.graph_builder.build(objs) for objs in train_objects_list]
-            # Fine-tune on training examples (pair each graph with its expected output)
+            # Fine-tune on training examples (pair each graph w/ expected output)
             train_pairs = list(zip(train_graphs, training_outputs))
             self.graph_ttt.train(train_pairs, train_graphs)
-            # print(f"Test-time training complete")
+            # print(f"Test-time training done")
         except Exception as e:
             # print(f"Test-time training failed: {e}")
             pass
@@ -116,7 +116,7 @@ class ArcAgent:
             # print(f"Graph head generation failed: {e}")
             pass
         
-        # Fallback: crop to bounding box if no good prediction
+        # Fallback: crop to bbox if no good prediction
         if not candidates:
             nonzero = np.where(test_input != 0)
             if len(nonzero[0]) > 0:
@@ -131,7 +131,7 @@ class ArcAgent:
             # rank() returns (output_grid, initial_score, similarity_score)
             predictions = [out for out, _, _ in ranked[:3]]
         elif candidates:
-            # No training outputs to rank against, use candidates as-is
+            # No training outputs to rank against, just use candidates
             predictions = [out for out, _ in candidates[:3]]
         
         return predictions[:3] if predictions else [test_input]
