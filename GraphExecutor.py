@@ -4,6 +4,7 @@
 import numpy as np
 from copy import deepcopy
 from typing import Set, Tuple
+from collections import deque
 from GraphSemanticNetwork import SemanticGraph
 from GraphDSL import TransformProgram, OperationType, Selector
 from GraphObjectExtractor import Object
@@ -125,6 +126,12 @@ class GraphExecutor:
             elif operation.type == OperationType.CROP_NONZERO_BBOX:
                 grid_state = self._render_objects(objects_map, grid_height, grid_width)
                 return self._crop_nonzero_bbox(grid_state)
+
+            elif operation.type == OperationType.FILL_ENCLOSED_ZEROS:
+                grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                enclosed_color = operation.params.get('enclosed_color', 2)
+                exterior_color = operation.params.get('exterior_color', -1)
+                return self._fill_enclosed_zeros(grid_state, enclosed_color, exterior_color)
 
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
@@ -324,6 +331,56 @@ class GraphExecutor:
         if new_pixels:
             rows, cols = zip(*new_pixels)
             obj.bbox = (min(rows), min(cols), max(rows), max(cols))
+
+    def _fill_enclosed_zeros(self, grid: np.ndarray, enclosed_color: int, exterior_color: int = -1) -> np.ndarray:
+        # Fill zero-valued connected components:
+        # - Components touching border are "exterior"
+        # - Remaining components are "enclosed"
+        # Non-zero cells are preserved.
+        if grid.size == 0:
+            return grid.copy()
+
+        rows, cols = grid.shape
+        zero_mask = (grid == 0)
+        if not np.any(zero_mask):
+            return grid.copy()
+
+        exterior = np.zeros_like(zero_mask, dtype=bool)
+        queue = deque()
+
+        # Seed border zeros
+        for col in range(cols):
+            if zero_mask[0, col] and not exterior[0, col]:
+                exterior[0, col] = True
+                queue.append((0, col))
+            if zero_mask[rows - 1, col] and not exterior[rows - 1, col]:
+                exterior[rows - 1, col] = True
+                queue.append((rows - 1, col))
+
+        for row in range(rows):
+            if zero_mask[row, 0] and not exterior[row, 0]:
+                exterior[row, 0] = True
+                queue.append((row, 0))
+            if zero_mask[row, cols - 1] and not exterior[row, cols - 1]:
+                exterior[row, cols - 1] = True
+                queue.append((row, cols - 1))
+
+        # Flood-fill all exterior zero cells
+        while queue:
+            row, col = queue.popleft()
+            for d_row, d_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n_row, n_col = row + d_row, col + d_col
+                if 0 <= n_row < rows and 0 <= n_col < cols:
+                    if zero_mask[n_row, n_col] and not exterior[n_row, n_col]:
+                        exterior[n_row, n_col] = True
+                        queue.append((n_row, n_col))
+
+        output = grid.copy()
+        if exterior_color >= 0:
+            output[zero_mask & exterior] = exterior_color
+        if enclosed_color >= 0:
+            output[zero_mask & (~exterior)] = enclosed_color
+        return output
     
     def _flip_object(self, obj: Object, direction: str) -> None:
         # Flip object horizontally or vertically

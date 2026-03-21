@@ -26,6 +26,7 @@ class OperationType(Enum):
     NAND = "nand"
     NOR = "nor"
     SWAP_COLORS = "swap_colors"
+    FILL_ENCLOSED_ZEROS = "fill_enclosed_zeros"
 
 
 class Selector(Enum):

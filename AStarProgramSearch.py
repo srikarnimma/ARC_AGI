@@ -255,6 +255,25 @@ class AStarProgramSearch:
             )
         )
 
+        # Fill enclosed zero-regions (with optional exterior recolor)
+        output_colors = [c for c in colors_out if c != 0]
+        for enclosed_color in output_colors or [2]:
+            actions.append(
+                Operation(
+                    type=OperationType.FILL_ENCLOSED_ZEROS,
+                    selector=Selector.ALL,
+                    params={"enclosed_color": enclosed_color, "exterior_color": -1},
+                )
+            )
+            for exterior_color in output_colors or [3]:
+                actions.append(
+                    Operation(
+                        type=OperationType.FILL_ENCLOSED_ZEROS,
+                        selector=Selector.ALL,
+                        params={"enclosed_color": enclosed_color, "exterior_color": exterior_color},
+                    )
+                )
+
         # Logical ops between subgrids (auto-detect the separator)
         output_colors = [c for c in palette if c != 0]
         logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR']
