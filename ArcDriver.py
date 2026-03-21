@@ -1,5 +1,7 @@
 import json
 import os.path
+import time
+import argparse
 
 import numpy as np
 
@@ -14,7 +16,9 @@ def run_training_data(agent: ArcAgent, arc_problems: list[ArcProblem]) -> dict[A
     test if they are getting the correct response.
     """
     train_ans_dict: dict[ArcProblem, tuple[bool, list]] = dict()
-    for trn_problem in arc_problems:
+    total_problems = len(arc_problems)
+    for i, trn_problem in enumerate(arc_problems, start=1):
+        start_time = time.perf_counter()
         preds: list[np.ndarray] = agent.make_predictions(trn_problem)
         correct = False
 
@@ -26,6 +30,12 @@ def run_training_data(agent: ArcAgent, arc_problems: list[ArcProblem]) -> dict[A
 
         # # store the problem_set and whether it was correctly solved
         train_ans_dict[trn_problem] = (correct, preds)
+
+        elapsed_seconds = time.perf_counter() - start_time
+        print(
+            f"[{i}/{total_problems}] {trn_problem.problem_name()} "
+            f"| correct={correct} | time={elapsed_seconds:.3f}s"
+        )
 
     return train_ans_dict
 
@@ -58,11 +68,29 @@ def load_arc_problems(path: str, problem_data: list[str]) -> list[ArcProblem]:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ARC milestone problems")
+    parser.add_argument(
+        "-p",
+        "--problem",
+        type=str,
+        default=None,
+        help="Optional problem id or filename (e.g. 7b6016b9 or 7b6016b9.json)",
+    )
+    args = parser.parse_args()
     
     # Here you can use this to open other milestone data directories for running against
     #  you'll should copy this code and change the path to the milestone you want to load (B, C or D)
     milestone_path = os.path.join('Milestones', 'C')
-    milestone_data: list[str] = os.listdir(milestone_path)
+    milestone_data: list[str] = sorted(os.listdir(milestone_path))
+
+    if args.problem:
+        problem_file = args.problem if args.problem.endswith('.json') else f"{args.problem}.json"
+        if problem_file not in milestone_data:
+            raise FileNotFoundError(
+                f"Problem '{args.problem}' not found in {milestone_path}. "
+                f"Expected file: {problem_file}"
+            )
+        milestone_data = [problem_file]
 
     arc_milestone_problems: list[ArcProblem] = load_arc_problems(milestone_path, milestone_data)
 
@@ -81,8 +109,8 @@ if __name__ == "__main__":
         if len(predictions) == 0:
             milestone_file.write("empty\n")
             continue
-        for idx, pred in enumerate(predictions, 1):
-            if len(predictions) == idx:
+        for i, pred in enumerate(predictions, 1):
+            if len(predictions) == i:
                 milestone_file.write(f'"{pred.tolist()}"\n')
             else:
                 milestone_file.write(f'"{pred.tolist()}",')
