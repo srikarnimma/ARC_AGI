@@ -31,8 +31,8 @@ class AStarProgramSearch:
         self,
         executor: GraphExecutor,
         verifier: OutputVerifier,
-        max_depth: int = 4,
-        max_expansions: int = 1500,
+        max_depth: int = 3,
+        max_expansions: int = 500,
         weight: float = 1.0,
         offsets: Optional[List[int]] = None,
         allow_translate: bool = True,
@@ -40,6 +40,7 @@ class AStarProgramSearch:
         size_mismatch_penalty: float = 0.5,
         debug: bool = False,
         debug_every: int = 50,
+        print_closest: bool = True,
     ) -> None:
         self.executor = executor
         self.verifier = verifier
@@ -52,6 +53,7 @@ class AStarProgramSearch:
         self.size_mismatch_penalty = size_mismatch_penalty
         self.debug = debug
         self.debug_every = max(1, debug_every)
+        self.print_closest = print_closest
 
     def search(self, training_pairs: List[Tuple[np.ndarray, np.ndarray, SemanticGraph]]) -> Optional[SearchResult]:
         if not training_pairs:
@@ -70,6 +72,7 @@ class AStarProgramSearch:
 
         visited_depth: Dict[Tuple, int] = {}
         expansions = 0
+        closest_by_depth: Dict[int, Tuple[float, TransformProgram]] = {}
 
         while heap and expansions < self.max_expansions:
             _, depth, _, program, loss = heapq.heappop(heap)
@@ -96,6 +99,14 @@ class AStarProgramSearch:
             for op in action_space:
                 new_program = TransformProgram(program.operations + [op])
                 new_loss = self._evaluate_program(new_program, training_pairs)
+
+                # child_depth = depth + 1
+                # prev_closest = closest_by_depth.get(child_depth)
+                # if prev_closest is None or new_loss < prev_closest[0]:
+                #     closest_by_depth[child_depth] = (new_loss, new_program)
+                #     if self.print_closest:
+                #         self._log_closest_path(child_depth, new_program, new_loss)
+
                 if self.debug:
                     self._log_op(depth + 1, op, new_loss)
                 if new_loss == 0.0:
@@ -117,6 +128,21 @@ class AStarProgramSearch:
         params_items = ", ".join(f"{k}={v}" for k, v in sorted(op.params.items()))
         print(f"[A*] try depth={depth} op={op.type.name} sel={op.selector.name} {params_items} -> loss={loss:.4f}")
 
+    def _log_closest_path(self, depth: int, program: TransformProgram, loss: float) -> None:
+        path = self._format_program_path(program)
+        print(f"[A*] closest depth={depth} loss={loss:.4f} path={path}")
+
+    def _format_program_path(self, program: TransformProgram) -> str:
+        if not program.operations:
+            return "<empty>"
+        return " -> ".join(self._format_op(op) for op in program.operations)
+
+    def _format_op(self, op: Operation) -> str:
+        params_items = ", ".join(f"{k}={v}" for k, v in sorted(op.params.items()))
+        if params_items:
+            return f"{op.type.name}({op.selector.name}; {params_items})"
+        return f"{op.type.name}({op.selector.name})"
+
     def _evaluate_program(
         self,
         program: TransformProgram,
@@ -128,11 +154,69 @@ class AStarProgramSearch:
                 predicted = self.executor.execute(input_grid, graph, program)
             except Exception:
                 return 1.0
-            loss = self.verifier.compute_loss(predicted, output_grid)
-            if predicted.shape != output_grid.shape:
-                loss = min(1.0, loss + self.size_mismatch_penalty)
+            if predicted.shape == output_grid.shape:
+                loss = self.verifier.compute_loss(predicted, output_grid)
+            else:
+                loss = self._shape_aware_mismatch_loss(predicted, output_grid)
             losses.append(loss)
         return float(np.mean(losses)) if losses else 1.0
+
+    def _shape_aware_mismatch_loss(self, predicted: np.ndarray, target: np.ndarray) -> float:
+        # For shape mismatch, estimate how close we are by finding the best-aligned overlap,
+        # then add a softer size penalty. This rewards promising intermediate steps.
+        p_h, p_w = predicted.shape
+        t_h, t_w = target.shape
+
+        # If one grid can fully slide over the other, compare at best alignment.
+        if p_h <= t_h and p_w <= t_w:
+            best = self._best_window_match(predicted, target)
+        elif t_h <= p_h and t_w <= p_w:
+            best = self._best_window_match(target, predicted)
+        else:
+            # Mixed mismatch (one dim larger, one smaller): fallback to overlap crop.
+            min_h = min(p_h, t_h)
+            min_w = min(p_w, t_w)
+            pred_crop = predicted[:min_h, :min_w]
+            target_crop = target[:min_h, :min_w]
+            content_loss = self.verifier.compute_loss(pred_crop, target_crop)
+            mask_loss = self._mask_loss(pred_crop, target_crop)
+            best = 0.7 * content_loss + 0.3 * mask_loss
+
+        size_penalty = self._relative_size_penalty(predicted.shape, target.shape)
+        return float(min(1.0, best + self.size_mismatch_penalty * size_penalty))
+
+    def _best_window_match(self, small: np.ndarray, large: np.ndarray) -> float:
+        s_h, s_w = small.shape
+        l_h, l_w = large.shape
+
+        best_loss = 1.0
+        for row in range(l_h - s_h + 1):
+            for col in range(l_w - s_w + 1):
+                window = large[row:row + s_h, col:col + s_w]
+                content_loss = self.verifier.compute_loss(small, window)
+                mask_loss = self._mask_loss(small, window)
+                combined = 0.7 * content_loss + 0.3 * mask_loss
+                if combined < best_loss:
+                    best_loss = combined
+        return float(best_loss)
+
+    def _mask_loss(self, a: np.ndarray, b: np.ndarray) -> float:
+        # Compare non-zero support irrespective of exact color values.
+        a_mask = (a != 0)
+        b_mask = (b != 0)
+        union = np.sum(a_mask | b_mask)
+        if union == 0:
+            return 0.0
+        intersection = np.sum(a_mask & b_mask)
+        iou = float(intersection) / float(union)
+        return float(1.0 - iou)
+
+    def _relative_size_penalty(self, shape_a: Tuple[int, ...], shape_b: Tuple[int, ...]) -> float:
+        a_h, a_w = shape_a
+        b_h, b_w = shape_b
+        row_gap = abs(a_h - b_h) / float(max(a_h, b_h, 1))
+        col_gap = abs(a_w - b_w) / float(max(a_w, b_w, 1))
+        return float(0.5 * (row_gap + col_gap))
 
     def _build_action_space(
         self,
@@ -250,6 +334,15 @@ class AStarProgramSearch:
         actions.append(
             Operation(
                 type=OperationType.CROP_NONZERO_BBOX,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
+        # Contextual crop/recolor operations
+        actions.append(
+            Operation(
+                type=OperationType.CROP_RECOLOR_BY_CORNER_MARKERS,
                 selector=Selector.ALL,
                 params={},
             )

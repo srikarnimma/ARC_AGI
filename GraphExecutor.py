@@ -3,7 +3,7 @@
 
 import numpy as np
 from copy import deepcopy
-from typing import Set, Tuple
+from typing import Optional, Set, Tuple
 from collections import deque
 from GraphSemanticNetwork import SemanticGraph
 from GraphDSL import TransformProgram, OperationType, Selector
@@ -12,6 +12,18 @@ from GraphObjectExtractor import Object
 
 class GraphExecutor:
     # Executes transform programs on grids using semantic graph info
+
+    def _is_grid_operation(self, operation_type: OperationType) -> bool:
+        return operation_type in {
+            OperationType.ROTATE_GRID,
+            OperationType.FLIP_GRID,
+            OperationType.MIRROR_VERTICAL,
+            OperationType.MIRROR_HORIZONTAL,
+            OperationType.CROP_NONZERO_BBOX,
+            OperationType.FILL_ENCLOSED_ZEROS,
+            OperationType.CROP_RECOLOR_BY_CORNER_MARKERS,
+            OperationType.AND_SPLIT,
+        }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
         # Run a transformation program on an input grid
@@ -40,11 +52,24 @@ class GraphExecutor:
                     if input_grid[r, c] == graph_node.color:
                         obj.pixels.add((r, c))
             objects_map[obj_id] = obj
+
+        # If a grid-level op is used, we switch to grid pipeline mode and
+        # apply subsequent grid-level ops sequentially.
+        current_grid: Optional[np.ndarray] = None
+        object_state_dirty = False
         
         # Apply each op in seq
         for operation in program.operations:
             # print(f"[GraphExecutor] Applying {operation.type.name}")
-            # Find matching objs
+            if current_grid is not None and not self._is_grid_operation(operation.type):
+                # Object-level ops cannot be applied meaningfully after switching
+                # to grid-level mode; skip them.
+                continue
+
+            if current_grid is None and not self._is_grid_operation(operation.type):
+                object_state_dirty = True
+
+            # Find matching objs (used by object-level ops)
             matching_ids = self._select_objects(objects_map, operation.selector, operation.params)
             
             # Apply the op
@@ -69,8 +94,13 @@ class GraphExecutor:
 
             elif operation.type == OperationType.ROTATE_GRID:
                 angle = operation.params.get('angle', 0)
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
-                return self._rotate_grid(grid_state, angle)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._rotate_grid(grid_state, angle)
             
             elif operation.type == OperationType.FLIP:
                 direction = operation.params.get('direction', 'horizontal')
@@ -80,18 +110,33 @@ class GraphExecutor:
 
             elif operation.type == OperationType.FLIP_GRID:
                 direction = operation.params.get('direction', 'horizontal')
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
-                return self._flip_grid(grid_state, direction)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._flip_grid(grid_state, direction)
             
             elif operation.type == OperationType.MIRROR_VERTICAL:
                 # Mirror around vertical center axis (left-right symmetry)
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
-                return self._mirror_vertical(grid_state)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._mirror_vertical(grid_state)
             
             elif operation.type == OperationType.MIRROR_HORIZONTAL:
                 # Mirror around horizontal center axis (top-bottom symmetry)
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
-                return self._mirror_horizontal(grid_state)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._mirror_horizontal(grid_state)
             
             elif operation.type == OperationType.COPY:
                 offset_r = operation.params.get('offset_r', 0)
@@ -124,21 +169,46 @@ class GraphExecutor:
                     objects_map[obj_id_1].color, objects_map[obj_id_2].color = objects_map[obj_id_2].color, objects_map[obj_id_1].color
 
             elif operation.type == OperationType.CROP_NONZERO_BBOX:
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
-                return self._crop_nonzero_bbox(grid_state)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._crop_nonzero_bbox(grid_state)
 
             elif operation.type == OperationType.FILL_ENCLOSED_ZEROS:
-                grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
                 enclosed_color = operation.params.get('enclosed_color', 2)
                 exterior_color = operation.params.get('exterior_color', -1)
-                return self._fill_enclosed_zeros(grid_state, enclosed_color, exterior_color)
+                current_grid = self._fill_enclosed_zeros(grid_state, enclosed_color, exterior_color)
+
+            elif operation.type == OperationType.CROP_RECOLOR_BY_CORNER_MARKERS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._crop_recolor_by_corner_markers(grid_state)
 
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
                 output_color = operation.params.get('output_color', 2)
                 logic_op = operation.params.get('logic_op', 'AND')
                 split_direction = operation.params.get('split_direction', 'AUTO')  # AUTO, ROW, or COL
-                return self._logical_and_split(input_grid, separator_color, output_color, logic_op, split_direction)
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._logical_and_split(grid_state, separator_color, output_color, logic_op, split_direction)
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -197,6 +267,9 @@ class GraphExecutor:
                         )
                         objects_map[result_obj_id] = result_obj
         
+        if current_grid is not None:
+            return current_grid
+
         # Render all objects to output grid
         output_grid = self._render_objects(objects_map, grid_height, grid_width)
         
@@ -464,11 +537,15 @@ class GraphExecutor:
 
     def _crop_nonzero_bbox(self, grid: np.ndarray) -> np.ndarray:
         # Crop to the bounding box of all non-zero pixels.
+        # print("cropping ----")
+        # print(grid)
         nonzero = np.argwhere(grid != 0)
         if nonzero.size == 0:
             return grid.copy()
         min_r, min_c = nonzero.min(axis=0)
         max_r, max_c = nonzero.max(axis=0)
+        # print(grid[min_r:max_r + 1, min_c:max_c + 1])
+        # print("done cropping ---")
         return grid[min_r:max_r + 1, min_c:max_c + 1]
 
     def _hollow_object(self, obj: Object) -> None:
@@ -482,6 +559,38 @@ class GraphExecutor:
             if r == min_r or r == max_r or c == min_c or c == max_c:
                 new_pixels.add((r, c))
         obj.pixels = new_pixels
+
+    def _crop_recolor_by_corner_markers(self, grid: np.ndarray) -> np.ndarray:
+        # Assumes input is already cropped to its non-zero bounding box.
+        # If all four corners match, remove one border and recolor non-zero interior cells.
+        # print("-cornering----")
+        # print(grid)
+        if grid.size == 0:
+            return grid.copy()
+
+        rows, cols = grid.shape
+        if rows < 3 or cols < 3:
+            return grid.copy()
+
+        corner_color = int(grid[0, 0])
+        if corner_color == 0:
+            return grid.copy()
+
+        if not (
+            int(grid[0, cols - 1]) == corner_color
+            and int(grid[rows - 1, 0]) == corner_color
+            and int(grid[rows - 1, cols - 1]) == corner_color
+        ):
+            return grid.copy()
+
+        interior = grid[1:rows - 1, 1:cols - 1].copy()
+        if interior.size == 0:
+            return grid.copy()
+
+        interior[interior != 0] = corner_color
+        # print(interior)
+        # print("---done cornering----")
+        return interior
 
     def _logical_and_split(self, grid: np.ndarray, separator_color: int | None, output_color: int, logic_op: str = 'AND', split_direction: str = 'AUTO') -> np.ndarray:
         # Split grid on separator line and apply logical operation to the two halves

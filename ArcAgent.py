@@ -37,7 +37,7 @@ class ArcAgent:
             executor=self.executor,
             verifier=OutputVerifier(),
             max_depth=3,
-            max_expansions=400,
+            max_expansions=100,
             weight=1.5,
             offsets=[-1, 1],
             allow_translate=True,
