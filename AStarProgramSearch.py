@@ -241,6 +241,28 @@ class AStarProgramSearch:
                     )
                 )
 
+        # Shape-driven recolor ops (uses extractor features like is_closed_shape)
+        shape_labels = ["circle", "cycle", "triangle", "arrow"]
+        for shape in shape_labels:
+            for to_color in (sorted(colors_out - {0}) or [8]):
+                actions.append(
+                    Operation(
+                        type=OperationType.RECOLOR,
+                        selector=Selector.BY_SHAPE,
+                        params={"shape": shape, "new_color": to_color},
+                    )
+                )
+                for from_color in colors_in:
+                    if from_color == to_color:
+                        continue
+                    actions.append(
+                        Operation(
+                            type=OperationType.RECOLOR,
+                            selector=Selector.BY_SHAPE,
+                            params={"shape": shape, "color": from_color, "new_color": to_color},
+                        )
+                    )
+
         # add flip ops (horizontal & vertical)
         for direction in ["horizontal", "vertical"]:
             actions.append(
@@ -345,6 +367,22 @@ class AStarProgramSearch:
                 type=OperationType.CROP_RECOLOR_BY_CORNER_MARKERS,
                 selector=Selector.ALL,
                 params={},
+            )
+        )
+
+        # Span matching same-color endpoints along rows/columns
+        actions.append(
+            Operation(
+                type=OperationType.SPAN_MATCHING_COLOR_ENDPOINTS,
+                selector=Selector.ALL,
+                params={"include_cols": False},
+            )
+        )
+        actions.append(
+            Operation(
+                type=OperationType.SPAN_MATCHING_COLOR_ENDPOINTS,
+                selector=Selector.ALL,
+                params={"include_cols": True},
             )
         )
 

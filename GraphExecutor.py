@@ -22,6 +22,7 @@ class GraphExecutor:
             OperationType.CROP_NONZERO_BBOX,
             OperationType.FILL_ENCLOSED_ZEROS,
             OperationType.CROP_RECOLOR_BY_CORNER_MARKERS,
+            OperationType.SPAN_MATCHING_COLOR_ENDPOINTS,
             OperationType.AND_SPLIT,
         }
     
@@ -45,6 +46,10 @@ class GraphExecutor:
                 pixels=set(),  # Will be inferred from grid
                 bbox=graph_node.bbox
             )
+            obj.is_closed_shape = getattr(graph_node, 'is_closed_shape', False)
+            obj.is_triangle = getattr(graph_node, 'is_triangle', False)
+            obj.is_arrow = getattr(graph_node, 'is_arrow', False)
+            obj.is_cyclic = getattr(graph_node, 'is_cyclic', False)
             # Extract pixels from input grid in this bbox
             min_r, min_c, max_r, max_c = graph_node.bbox
             for r in range(max(0, min_r), min(grid_height, max_r + 1)):
@@ -197,6 +202,16 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 current_grid = self._crop_recolor_by_corner_markers(grid_state)
 
+            elif operation.type == OperationType.SPAN_MATCHING_COLOR_ENDPOINTS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                include_cols = bool(operation.params.get('include_cols', False))
+                current_grid = self._span_matching_color_endpoints(grid_state, include_cols=include_cols)
+
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
                 output_color = operation.params.get('output_color', 2)
@@ -297,12 +312,17 @@ class GraphExecutor:
         
         elif selector == Selector.BY_SHAPE:
             shape = params.get('shape', 'unknown')
+            color_filter = params.get('color', None)
             for obj_id, obj in objects_map.items():
+                if color_filter is not None and obj.color != color_filter:
+                    continue
                 if shape == 'arrow' and obj.is_arrow:
                     matching.add(obj_id)
                 elif shape == 'triangle' and obj.is_triangle:
                     matching.add(obj_id)
                 elif shape == 'circle' and obj.is_closed_shape:
+                    matching.add(obj_id)
+                elif shape == 'cycle' and obj.is_cyclic:
                     matching.add(obj_id)
         
         elif selector == Selector.BY_POSITION:
@@ -591,6 +611,47 @@ class GraphExecutor:
         # print(interior)
         # print("---done cornering----")
         return interior
+
+    def _span_matching_color_endpoints(self, grid: np.ndarray, include_cols: bool = False) -> np.ndarray:
+        # For each row (and optionally column), if the first and last non-zero
+        # cells have the same color and the in-between cells contain only 0 or
+        # that color, fill the full span with that color.
+        if grid.size == 0:
+            return grid.copy()
+
+        output = grid.copy()
+        base = grid
+        rows, cols = base.shape
+
+        for row in range(rows):
+            nz_cols = np.flatnonzero(base[row] != 0)
+            if nz_cols.size < 2:
+                continue
+            left = int(nz_cols[0])
+            right = int(nz_cols[-1])
+            color = int(base[row, left])
+            if color == 0 or int(base[row, right]) != color:
+                continue
+            segment = base[row, left:right + 1]
+            if np.all((segment == 0) | (segment == color)):
+                output[row, left:right + 1] = color
+
+        if include_cols:
+            base_col = output.copy()
+            for col in range(cols):
+                nz_rows = np.flatnonzero(base_col[:, col] != 0)
+                if nz_rows.size < 2:
+                    continue
+                top = int(nz_rows[0])
+                bottom = int(nz_rows[-1])
+                color = int(base_col[top, col])
+                if color == 0 or int(base_col[bottom, col]) != color:
+                    continue
+                segment = base_col[top:bottom + 1, col]
+                if np.all((segment == 0) | (segment == color)):
+                    output[top:bottom + 1, col] = color
+
+        return output
 
     def _logical_and_split(self, grid: np.ndarray, separator_color: int | None, output_color: int, logic_op: str = 'AND', split_direction: str = 'AUTO') -> np.ndarray:
         # Split grid on separator line and apply logical operation to the two halves

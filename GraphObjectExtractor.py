@@ -21,6 +21,7 @@ class Object:
         
         # Features
         self.is_closed_shape = False
+        self.is_cyclic = False
         self.num_holes = 0
         self.is_hollow = False
         self.is_arrow = False
@@ -134,6 +135,7 @@ class ObjectExtractor:
         
         # Detect features
         obj.is_closed_shape = self._is_closed_shape(pixels)
+        obj.is_cyclic = self._has_cycle(pixels)
         obj.is_hollow = self._is_hollow(pixels, bbox)
         obj.num_holes = self._count_holes(pixels, bbox)
         obj.is_arrow = self._is_arrow(pixels, bbox)
@@ -169,6 +171,22 @@ class ObjectExtractor:
         area = len(pixels)
         # Closed shapes typically have P^2 ~ 4*pi*A, so P^2/A ~ 12-15 for circle
         return (perimeter * perimeter) / area > 10 and (perimeter * perimeter) / area < 25
+
+    def _has_cycle(self, pixels: Set[Tuple[int, int]]) -> bool:
+        # Graph-theoretic cycle test on 4-neighbor adjacency.
+        # For a connected component, cycle exists iff E >= V.
+        num_vertices = len(pixels)
+        if num_vertices < 4:
+            return False
+
+        num_edges = 0
+        for r, c in pixels:
+            if (r + 1, c) in pixels:
+                num_edges += 1
+            if (r, c + 1) in pixels:
+                num_edges += 1
+
+        return num_edges >= num_vertices
     
     def _is_hollow(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
         # Check if interior is mostly empty

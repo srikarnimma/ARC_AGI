@@ -28,6 +28,7 @@ class OperationType(Enum):
     SWAP_COLORS = "swap_colors"
     FILL_ENCLOSED_ZEROS = "fill_enclosed_zeros"
     CROP_RECOLOR_BY_CORNER_MARKERS = "crop_recolor_by_corner_markers"
+    SPAN_MATCHING_COLOR_ENDPOINTS = "span_matching_color_endpoints"
 
 
 class Selector(Enum):

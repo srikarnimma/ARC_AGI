@@ -20,10 +20,23 @@ class RelationType(Enum):
 
 class GraphNode:
     # Object node in the graph
-    def __init__(self, id: int, color: int, bbox: tuple):
+    def __init__(
+        self,
+        id: int,
+        color: int,
+        bbox: tuple,
+        is_closed_shape: bool = False,
+        is_triangle: bool = False,
+        is_arrow: bool = False,
+        is_cyclic: bool = False,
+    ):
         self.id = id
         self.color = color
         self.bbox = bbox
+        self.is_closed_shape = is_closed_shape
+        self.is_triangle = is_triangle
+        self.is_arrow = is_arrow
+        self.is_cyclic = is_cyclic
 
 
 class Relation:
@@ -55,7 +68,15 @@ class GraphBuilder:
         # print(f"Building graph from {len(colored_objects)} objects")
         
         for obj in colored_objects:
-            node = GraphNode(id=obj.id, color=obj.color, bbox=obj.bbox)
+            node = GraphNode(
+                id=obj.id,
+                color=obj.color,
+                bbox=obj.bbox,
+                is_closed_shape=getattr(obj, 'is_closed_shape', False),
+                is_triangle=getattr(obj, 'is_triangle', False),
+                is_arrow=getattr(obj, 'is_arrow', False),
+                is_cyclic=getattr(obj, 'is_cyclic', False),
+            )
             graph.nodes[obj.id] = node
         # print(f"Created {len(graph.nodes)} graph nodes")
         
