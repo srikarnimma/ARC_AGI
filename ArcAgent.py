@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import time
 from typing import List
 
 from ArcProblem import ArcProblem
@@ -27,6 +28,7 @@ class ArcAgent:
     
     def __init__(self):
         self.device = torch.device('cpu')
+        self.max_solve_seconds = 20.0
         
         # Procedural components (no neural nets)
         self.extractor = ObjectExtractor()
@@ -55,6 +57,12 @@ class ArcAgent:
         self.ranker = CandidateRanker(self.verifier)
 
     def make_predictions(self, arc_problem: ArcProblem) -> list[np.ndarray]:
+        start_time = time.perf_counter()
+        deadline = start_time + self.max_solve_seconds
+
+        def timed_out() -> bool:
+            return time.perf_counter() >= deadline
+
         predictions: list[np.ndarray] = []
         
         # Grab the training & test data
@@ -64,6 +72,9 @@ class ArcAgent:
         
         test_data = arc_problem.test_set()
         test_input = test_data.get_input_data().data()
+
+        if timed_out():
+            return [test_input]
         
         # Pull out objs from test input
         test_objects = self.extractor.extract(test_input)
@@ -75,13 +86,16 @@ class ArcAgent:
         
         # Extract objs from training examples for test-time training
         try:
+            if timed_out():
+                return [test_input]
             train_objects_list = [self.extractor.extract(inp) for inp in training_inputs]
             # print(f"Extracted objects from {len(train_objects_list)} training examples")
             
             train_graphs = [self.graph_builder.build(objs) for objs in train_objects_list]
             # Fine-tune on training examples (pair each graph w/ expected output)
             train_pairs = list(zip(train_graphs, training_outputs))
-            self.graph_ttt.train(train_pairs, train_graphs)
+            if not timed_out():
+                self.graph_ttt.train(train_pairs, train_graphs)
             # print(f"Test-time training done")
         except Exception as e:
             # print(f"Test-time training failed: {e}")
@@ -90,14 +104,17 @@ class ArcAgent:
         # A* program search using training pairs
         candidates = []
         try:
+            if timed_out():
+                return [test_input]
             training_pairs = []
             for inp, out in zip(training_inputs, training_outputs):
                 objects = self.extractor.extract(inp)
                 graph = self.graph_builder.build(objects)
                 training_pairs.append((inp, out, graph))
 
-            result = self.astar_search.search(training_pairs)
-            if result is not None:
+            remaining_time = max(0.0, deadline - time.perf_counter())
+            result = self.astar_search.search(training_pairs, max_time_seconds=remaining_time)
+            if result is not None and not timed_out():
                 program = result.program
                 output = self.executor.execute(test_input, test_graph, program)
                 initial_score = 1.0 - min(1.0, result.loss)
@@ -107,6 +124,8 @@ class ArcAgent:
 
         # Generate from graph head
         try:
+            if timed_out():
+                return [test_input]
             program = self.graph_head(test_graph)
             # print(f"Generated program: {program}")
             output = self.executor.execute(test_input, test_graph, program)
@@ -118,6 +137,8 @@ class ArcAgent:
         
         # Fallback: crop to bbox if no good prediction
         if not candidates:
+            if timed_out():
+                return [test_input]
             nonzero = np.where(test_input != 0)
             if len(nonzero[0]) > 0:
                 r_min, r_max = np.min(nonzero[0]), np.max(nonzero[0])

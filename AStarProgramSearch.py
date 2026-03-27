@@ -1,4 +1,5 @@
 import heapq
+import time
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -55,9 +56,20 @@ class AStarProgramSearch:
         self.debug_every = max(1, debug_every)
         self.print_closest = print_closest
 
-    def search(self, training_pairs: List[Tuple[np.ndarray, np.ndarray, SemanticGraph]]) -> Optional[SearchResult]:
+    def search(
+        self,
+        training_pairs: List[Tuple[np.ndarray, np.ndarray, SemanticGraph]],
+        max_time_seconds: Optional[float] = None,
+    ) -> Optional[SearchResult]:
         if not training_pairs:
             return None
+
+        search_start = time.perf_counter()
+
+        def timed_out() -> bool:
+            if max_time_seconds is None:
+                return False
+            return (time.perf_counter() - search_start) >= max_time_seconds
 
         action_space = self._build_action_space(training_pairs)
         start_program = TransformProgram([])
@@ -75,6 +87,9 @@ class AStarProgramSearch:
         closest_by_depth: Dict[int, Tuple[float, TransformProgram]] = {}
 
         while heap and expansions < self.max_expansions:
+            if timed_out():
+                break
+
             _, depth, _, program, loss = heapq.heappop(heap)
             expansions += 1
 
@@ -97,6 +112,9 @@ class AStarProgramSearch:
                 continue
 
             for op in action_space:
+                if timed_out():
+                    break
+
                 new_program = TransformProgram(program.operations + [op])
                 new_loss = self._evaluate_program(new_program, training_pairs)
 

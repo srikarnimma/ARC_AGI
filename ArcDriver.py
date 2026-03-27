@@ -1,4 +1,5 @@
 import json
+import os
 import os.path
 import time
 import argparse
@@ -67,8 +68,34 @@ def load_arc_problems(path: str, problem_data: list[str]) -> list[ArcProblem]:
     return problems
 
 
+def write_results_csv(file_path: str, milestone_data_set: dict[ArcProblem, tuple[bool, list]]) -> None:
+    with open(file_path, 'w') as milestone_file:
+        milestone_file.write("Problem Name, Correct, Correct Answer, Prediction 1, Prediction 2, Prediction 3\n")
+        for m_answer_set in milestone_data_set.keys():
+            m_correct, predictions = milestone_data_set[m_answer_set]
+            m_cor_ans = m_answer_set.test_set().get_output_data().data().tolist()
+            milestone_file.write(f'{m_answer_set.problem_name()},'
+                                 f'{m_correct},'
+                                 f'"{m_cor_ans}",')
+            if len(predictions) == 0:
+                milestone_file.write("empty\n")
+                continue
+            for i, pred in enumerate(predictions, 1):
+                if len(predictions) == i:
+                    milestone_file.write(f'"{pred.tolist()}"\n')
+                else:
+                    milestone_file.write(f'"{pred.tolist()}",')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ARC milestone problems")
+    parser.add_argument(
+        "-m",
+        "--milestone",
+        type=str,
+        default=None,
+        help="Optional milestone folder to run (e.g. B, C, D)",
+    )
     parser.add_argument(
         "-p",
         "--problem",
@@ -77,42 +104,73 @@ if __name__ == "__main__":
         help="Optional problem id or filename (e.g. 7b6016b9 or 7b6016b9.json)",
     )
     args = parser.parse_args()
-    
-    # Here you can use this to open other milestone data directories for running against
-    #  you'll should copy this code and change the path to the milestone you want to load (B, C or D)
-    milestone_path = os.path.join('Milestones', 'C')
-    milestone_data: list[str] = sorted(os.listdir(milestone_path))
+    milestones_root = 'Milestones'
 
-    if args.problem:
-        problem_file = args.problem if args.problem.endswith('.json') else f"{args.problem}.json"
-        if problem_file not in milestone_data:
-            raise FileNotFoundError(
-                f"Problem '{args.problem}' not found in {milestone_path}. "
-                f"Expected file: {problem_file}"
-            )
-        milestone_data = [problem_file]
+    if args.milestone:
+        selected_milestones = [args.milestone.upper()]
+    else:
+        selected_milestones = sorted(
+            folder_name for folder_name in os.listdir(milestones_root)
+            if os.path.isdir(os.path.join(milestones_root, folder_name))
+        )
 
-    arc_milestone_problems: list[ArcProblem] = load_arc_problems(milestone_path, milestone_data)
+    if args.problem and len(selected_milestones) > 1:
+        raise ValueError("When using --problem, please also provide --milestone.")
 
     # instantiate the agent once
     arc_agent: ArcAgent = ArcAgent()
 
-    milestone_data_set = run_training_data(arc_agent, arc_milestone_problems)
-    milestone_file = open('Milestone_Results.csv', 'w')
-    milestone_file.write("Problem Name, Correct, Correct Answer, Prediction 1, Prediction 2, Prediction 3\n")
-    for m_answer_set in milestone_data_set.keys():
-        m_correct, predictions = milestone_data_set[m_answer_set]
-        m_cor_ans = m_answer_set.test_set().get_output_data().data().tolist()
-        milestone_file.write(f'{m_answer_set.problem_name()},'
-                             f'{m_correct},'
-                             f'"{m_cor_ans}",')
-        if len(predictions) == 0:
-            milestone_file.write("empty\n")
-            continue
-        for i, pred in enumerate(predictions, 1):
-            if len(predictions) == i:
-                milestone_file.write(f'"{pred.tolist()}"\n')
-            else:
-                milestone_file.write(f'"{pred.tolist()}",')
+    overall_total = 0
+    overall_correct = 0
+    milestone_summaries: list[tuple[str, int, int, float]] = []
 
-    milestone_file.close()
+    for milestone_name in selected_milestones:
+        milestone_path = os.path.join(milestones_root, milestone_name)
+        if not os.path.isdir(milestone_path):
+            raise FileNotFoundError(f"Milestone folder not found: {milestone_path}")
+
+        milestone_data: list[str] = sorted(
+            file_name for file_name in os.listdir(milestone_path)
+            if file_name.endswith('.json')
+        )
+
+        if args.problem:
+            problem_file = args.problem if args.problem.endswith('.json') else f"{args.problem}.json"
+            if problem_file not in milestone_data:
+                raise FileNotFoundError(
+                    f"Problem '{args.problem}' not found in {milestone_path}. "
+                    f"Expected file: {problem_file}"
+                )
+            milestone_data = [problem_file]
+
+        print(f"\n=== Running Milestone {milestone_name} ({len(milestone_data)} problem(s)) ===")
+        milestone_start = time.perf_counter()
+        arc_milestone_problems = load_arc_problems(milestone_path, milestone_data)
+        milestone_data_set = run_training_data(arc_agent, arc_milestone_problems)
+        milestone_elapsed = time.perf_counter() - milestone_start
+
+        milestone_correct = sum(1 for is_correct, _ in milestone_data_set.values() if is_correct)
+        milestone_total = len(milestone_data_set)
+        milestone_acc = (100.0 * milestone_correct / milestone_total) if milestone_total > 0 else 0.0
+
+        overall_correct += milestone_correct
+        overall_total += milestone_total
+        milestone_summaries.append((milestone_name, milestone_correct, milestone_total, milestone_elapsed))
+
+        csv_name = f"Milestone_{milestone_name}_Results.csv"
+        write_results_csv(csv_name, milestone_data_set)
+        print(
+            f"Milestone {milestone_name} summary: {milestone_correct}/{milestone_total} "
+            f"({milestone_acc:.1f}%) in {milestone_elapsed:.2f}s | results: {csv_name}"
+        )
+
+    print("\n=== Final Summary ===")
+    for milestone_name, milestone_correct, milestone_total, milestone_elapsed in milestone_summaries:
+        milestone_acc = (100.0 * milestone_correct / milestone_total) if milestone_total > 0 else 0.0
+        print(
+            f"Milestone {milestone_name}: {milestone_correct}/{milestone_total} "
+            f"({milestone_acc:.1f}%) in {milestone_elapsed:.2f}s"
+        )
+
+    overall_acc = (100.0 * overall_correct / overall_total) if overall_total > 0 else 0.0
+    print(f"Overall: {overall_correct}/{overall_total} ({overall_acc:.1f}%)")
