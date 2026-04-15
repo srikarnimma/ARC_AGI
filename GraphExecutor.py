@@ -657,6 +657,31 @@ class GraphExecutor:
         # Split grid on separator line and apply logical operation to the two halves
         # split_direction: 'AUTO' (detect both), 'ROW' (horizontal split only), 'COL' (vertical split only)
         height, width = grid.shape
+
+        def _apply_logic(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+            output = np.zeros_like(lhs)
+            for r in range(lhs.shape[0]):
+                for c in range(lhs.shape[1]):
+                    has_lhs = lhs[r, c] != 0
+                    has_rhs = rhs[r, c] != 0
+
+                    result = False
+                    if logic_op == 'AND':
+                        result = has_lhs and has_rhs
+                    elif logic_op == 'OR':
+                        result = has_lhs or has_rhs
+                    elif logic_op == 'XOR':
+                        result = has_lhs != has_rhs
+                    elif logic_op == 'XNOR':
+                        result = has_lhs == has_rhs
+                    elif logic_op == 'NAND':
+                        result = not (has_lhs and has_rhs)
+                    elif logic_op == 'NOR':
+                        result = not (has_lhs or has_rhs)
+
+                    if result:
+                        output[r, c] = output_color
+            return output
         
         split_rows = []
         split_cols = []
@@ -678,90 +703,38 @@ class GraphExecutor:
                     if np.all(grid[:, c] == grid[0, c]):
                         split_cols.append(c)
 
-        # For ROW split, find separator that creates equal halves
+        # For ROW split, find separator that creates equal halves.
+        # If none works and no specific separator color is required, fallback to
+        # splitting the grid into two contiguous equal halves (no separator row).
         if split_direction in ['AUTO', 'ROW'] and split_rows:
-            # Try each separator row, prefer one that creates equal-sized halves
-            best_split = None
             for split in split_rows:
                 top = grid[:split, :]
                 bottom = grid[split + 1:, :]
                 if top.shape == bottom.shape:
-                    best_split = split
-                    break  # Found one with equal halves
-            if best_split is None:
-                best_split = split_rows[0]  # Fallback to first if no equal halves
-            
-            split = best_split
-            top = grid[:split, :]
-            bottom = grid[split + 1:, :]
-            if top.shape != bottom.shape:
-                return grid.copy()
-            
-            output = np.zeros_like(top)
-            for r in range(top.shape[0]):
-                for c in range(top.shape[1]):
-                    has_top = top[r, c] != 0
-                    has_bottom = bottom[r, c] != 0
-                    
-                    result = False
-                    if logic_op == 'AND':
-                        result = has_top and has_bottom
-                    elif logic_op == 'OR':
-                        result = has_top or has_bottom
-                    elif logic_op == 'XOR':
-                        result = has_top != has_bottom
-                    elif logic_op == 'XNOR':
-                        result = has_top == has_bottom
-                    elif logic_op == 'NAND':
-                        result = not (has_top and has_bottom)
-                    elif logic_op == 'NOR':
-                        result = not (has_top or has_bottom)
-                    
-                    if result:
-                        output[r, c] = output_color
-            return output
+                    return _apply_logic(top, bottom)
 
-        # For COL split, find separator that creates equal halves
+        if split_direction in ['AUTO', 'ROW'] and separator_color is None and height % 2 == 0:
+            half = height // 2
+            top = grid[:half, :]
+            bottom = grid[half:, :]
+            if top.shape == bottom.shape:
+                return _apply_logic(top, bottom)
+
+        # For COL split, find separator that creates equal halves.
+        # If none works and no specific separator color is required, fallback to
+        # splitting the grid into two contiguous equal halves (no separator col).
         if split_direction in ['AUTO', 'COL'] and split_cols:
-            # Try each separator col, prefer one that creates equal-sized halves
-            best_split = None
             for split in split_cols:
                 left = grid[:, :split]
                 right = grid[:, split + 1:]
                 if left.shape == right.shape:
-                    best_split = split
-                    break  # Found one with equal halves
-            if best_split is None:
-                best_split = split_cols[0]  # Fallback to first if no equal halves
-            
-            split = best_split
-            left = grid[:, :split]
-            right = grid[:, split + 1:]
-            if left.shape != right.shape:
-                return grid.copy()
-            
-            output = np.zeros_like(left)
-            for r in range(left.shape[0]):
-                for c in range(left.shape[1]):
-                    has_left = left[r, c] != 0
-                    has_right = right[r, c] != 0
-                    
-                    result = False
-                    if logic_op == 'AND':
-                        result = has_left and has_right
-                    elif logic_op == 'OR':
-                        result = has_left or has_right
-                    elif logic_op == 'XOR':
-                        result = has_left != has_right
-                    elif logic_op == 'XNOR':
-                        result = has_left == has_right
-                    elif logic_op == 'NAND':
-                        result = not (has_left and has_right)
-                    elif logic_op == 'NOR':
-                        result = not (has_left or has_right)
-                    
-                    if result:
-                        output[r, c] = output_color
-            return output
+                    return _apply_logic(left, right)
+
+        if split_direction in ['AUTO', 'COL'] and separator_color is None and width % 2 == 0:
+            half = width // 2
+            left = grid[:, :half]
+            right = grid[:, half:]
+            if left.shape == right.shape:
+                return _apply_logic(left, right)
 
         return grid.copy()
