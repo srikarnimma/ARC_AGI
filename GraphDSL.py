@@ -31,6 +31,7 @@ class OperationType(Enum):
     CROP_RECOLOR_BY_CORNER_MARKERS = "crop_recolor_by_corner_markers"
     SPAN_MATCHING_COLOR_ENDPOINTS = "span_matching_color_endpoints"
     RECOLOR_MAIN_BY_EXTERNAL_PAIRS = "recolor_main_by_external_pairs"
+    CONTEXTUAL_SYMMETRY_FILL = "contextual_symmetry_fill"
 
 
 class Selector(Enum):

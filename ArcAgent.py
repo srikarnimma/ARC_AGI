@@ -26,9 +26,10 @@ class ArcAgent:
     # 5. Execute program to produce output
     # 6. Verify against training outputs
     
-    def __init__(self):
+    def __init__(self, debug: bool = False):
         self.device = torch.device('cpu')
         self.max_solve_seconds = 20.0
+        self.debug = debug
         
         # Procedural components (no neural nets)
         self.extractor = ObjectExtractor()
@@ -57,6 +58,8 @@ class ArcAgent:
         self.ranker = CandidateRanker(self.verifier)
 
     def _debug_print_grid(self, label: str, grid: np.ndarray) -> None:
+        if not self.debug:
+            return
         print(label)
         print(grid)
 
@@ -87,25 +90,30 @@ class ArcAgent:
             if candidates and training_outputs:
                 ranked = self.ranker.rank(candidates, training_outputs[0])
                 final_predictions = [out for out, _, _ in ranked[:3]]
-                for index, (out, initial_score, similarity_score) in enumerate(ranked[:3], start=1):
-                    self._debug_print_grid(
-                        f"[ArcAgent] Final prediction {index} (initial={initial_score:.4f}, similarity={similarity_score:.4f}):",
-                        out,
-                    )
+                if self.debug:
+                    for index, (out, initial_score, similarity_score) in enumerate(ranked[:3], start=1):
+                        self._debug_print_grid(
+                            f"[ArcAgent] Final prediction {index} (initial={initial_score:.4f}, similarity={similarity_score:.4f}):",
+                            out,
+                        )
                 if timeout_triggered:
-                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                    if self.debug:
+                        print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                     self._debug_print_grid("[ArcAgent] Timeout final output:", final_predictions[0])
                 return final_predictions
             if candidates:
                 final_predictions = [out for out, _ in candidates[:3]]
-                for index, out in enumerate(final_predictions, start=1):
-                    self._debug_print_grid(f"[ArcAgent] Final prediction {index}:", out)
+                if self.debug:
+                    for index, out in enumerate(final_predictions, start=1):
+                        self._debug_print_grid(f"[ArcAgent] Final prediction {index}:", out)
                 if timeout_triggered:
-                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                    if self.debug:
+                        print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                     self._debug_print_grid("[ArcAgent] Timeout final output:", final_predictions[0])
                 return final_predictions
             if timeout_triggered:
-                print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                if self.debug:
+                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                 self._debug_print_grid("[ArcAgent] Timeout final output:", test_input)
             return [test_input]
         
@@ -117,8 +125,9 @@ class ArcAgent:
         test_data = arc_problem.test_set()
         test_input = test_data.get_input_data().data()
 
-        print("------")
-        print(f"[ArcAgent] Problem: {arc_problem.problem_name()}")
+        if self.debug:
+            print("------")
+            print(f"[ArcAgent] Problem: {arc_problem.problem_name()}")
         self._debug_print_grid("[ArcAgent] Test input grid:", test_input)
 
         if timed_out():

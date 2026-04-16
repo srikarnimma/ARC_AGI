@@ -26,6 +26,7 @@ class GraphExecutor:
             OperationType.SPAN_MATCHING_COLOR_ENDPOINTS,
             OperationType.AND_SPLIT,
             OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS,
+            OperationType.CONTEXTUAL_SYMMETRY_FILL,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -232,6 +233,15 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._recolor_main_by_external_pairs(grid_state)
+
+            elif operation.type == OperationType.CONTEXTUAL_SYMMETRY_FILL:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._contextual_symmetry_fill(grid_state)
 
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
@@ -866,6 +876,93 @@ class GraphExecutor:
         min_r, min_c = main_positions.min(axis=0)
         max_r, max_c = main_positions.max(axis=0)
         return output[min_r:max_r + 1, min_c:max_c + 1]
+
+    def _reflect_pixels_about_center(
+        self,
+        pixels: Set[Tuple[int, int]],
+        center_r: float,
+        center_c: float,
+        reflect_rows: bool,
+        reflect_cols: bool,
+    ) -> Set[Tuple[int, int]]:
+        reflected: Set[Tuple[int, int]] = set()
+        for r, c in pixels:
+            new_r = int(round(2 * center_r - r)) if reflect_rows else r
+            new_c = int(round(2 * center_c - c)) if reflect_cols else c
+            reflected.add((new_r, new_c))
+        return reflected
+
+    def _contextual_symmetry_fill(self, grid: np.ndarray) -> np.ndarray:
+        # For each hollow container, mirror enclosed objects across the
+        # container center. Horizontal vs vertical reflection is determined by
+        # the object's position relative to the container center.
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("----")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="8")
+        objects = [obj for obj in extractor.extract(grid) if not getattr(obj, 'is_grid_boundary', False)]
+        if not objects:
+            return grid.copy()
+
+        output = grid.copy()
+
+        def _center_of_pixels(pixels: Set[Tuple[int, int]]) -> Tuple[float, float]:
+            rows = [r for r, _ in pixels]
+            cols = [c for _, c in pixels]
+            return (float(sum(rows)) / float(len(rows)), float(sum(cols)) / float(len(cols)))
+
+        for container in objects:
+            if not getattr(container, 'is_hollow', False):
+                continue
+
+            min_r, min_c, max_r, max_c = container.bbox
+            container_center_r = (min_r + max_r) / 2.0
+            container_center_c = (min_c + max_c) / 2.0
+
+            enclosed_objects = []
+            for obj in objects:
+                if obj.id == container.id:
+                    continue
+                if obj.color == container.color:
+                    continue
+
+                obj_min_r, obj_min_c, obj_max_r, obj_max_c = obj.bbox
+                if obj_min_r <= min_r or obj_min_c <= min_c or obj_max_r >= max_r or obj_max_c >= max_c:
+                    continue
+                enclosed_objects.append(obj)
+
+            for obj in enclosed_objects:
+                obj_center_r, obj_center_c = _center_of_pixels(obj.pixels)
+                row_offset = abs(obj_center_r - container_center_r)
+                col_offset = abs(obj_center_c - container_center_c)
+
+                # Mirror on one axis only. Choose the axis where the seed
+                # object is farther from the container center.
+                if row_offset >= col_offset:
+                    reflect_rows = True
+                    reflect_cols = False
+                else:
+                    reflect_rows = False
+                    reflect_cols = True
+
+                mirrored_pixels = self._reflect_pixels_about_center(
+                    obj.pixels,
+                    container_center_r,
+                    container_center_c,
+                    reflect_rows,
+                    reflect_cols,
+                )
+
+                for r, c in mirrored_pixels:
+                    if min_r <= r <= max_r and min_c <= c <= max_c and output[r, c] == 0:
+                        output[r, c] = obj.color
+
+        # print(output)
+        # print("---")
+        return output
 
     def _fill_enclosed_by_local_mode(self, grid: np.ndarray) -> np.ndarray:
         # Reuse extracted objects to find hollow components, then fill enclosed

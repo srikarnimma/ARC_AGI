@@ -103,6 +103,12 @@ if __name__ == "__main__":
         default=None,
         help="Optional problem id or filename (e.g. 7b6016b9 or 7b6016b9.json)",
     )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug printing from ArcAgent",
+    )
     args = parser.parse_args()
     milestones_root = 'Milestones'
 
@@ -118,7 +124,7 @@ if __name__ == "__main__":
         raise ValueError("When using --problem, please also provide --milestone.")
 
     # instantiate the agent once
-    arc_agent: ArcAgent = ArcAgent()
+    arc_agent: ArcAgent = ArcAgent(debug=args.debug)
 
     overall_total = 0
     overall_correct = 0

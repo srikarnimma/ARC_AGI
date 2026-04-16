@@ -405,6 +405,13 @@ class AStarProgramSearch:
                 params={},
             )
         )
+        actions.append(
+            Operation(
+                type=OperationType.CONTEXTUAL_SYMMETRY_FILL,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
 
         # Span matching same-color endpoints along rows/columns
         actions.append(
