@@ -98,6 +98,8 @@ class AStarProgramSearch:
 
             signature = _program_signature(program)
             if signature in visited_depth and visited_depth[signature] <= depth:
+                if self.debug:
+                    self._log_skip_path(depth, program, loss)
                 continue
             visited_depth[signature] = depth
 
@@ -118,6 +120,10 @@ class AStarProgramSearch:
                 new_program = TransformProgram(program.operations + [op])
                 new_loss = self._evaluate_program(new_program, training_pairs)
 
+                if new_loss < best_loss:
+                    best_loss = new_loss
+                    best_program = new_program
+
                 # child_depth = depth + 1
                 # prev_closest = closest_by_depth.get(child_depth)
                 # if prev_closest is None or new_loss < prev_closest[0]:
@@ -126,7 +132,7 @@ class AStarProgramSearch:
                 #         self._log_closest_path(child_depth, new_program, new_loss)
 
                 if self.debug:
-                    self._log_op(depth + 1, op, new_loss)
+                    self._log_op(depth + 1, new_program, new_loss)
                 if new_loss == 0.0:
                     return SearchResult(program=new_program, loss=new_loss, expansions=expansions)
                 g_cost = depth + 1
@@ -137,14 +143,19 @@ class AStarProgramSearch:
         return SearchResult(program=best_program, loss=best_loss, expansions=expansions)
 
     def _log_status(self, expansions: int, depth: int, loss: float, heap_size: int, program: TransformProgram) -> None:
+        path = self._format_program_path(program)
         print(
             f"[A*] expansions={expansions} depth={depth} loss={loss:.4f} heap={heap_size} "
-            f"program_len={len(program.operations)}"
+            f"program_len={len(program.operations)} path={path}"
         )
 
-    def _log_op(self, depth: int, op: Operation, loss: float) -> None:
-        params_items = ", ".join(f"{k}={v}" for k, v in sorted(op.params.items()))
-        print(f"[A*] try depth={depth} op={op.type.name} sel={op.selector.name} {params_items} -> loss={loss:.4f}")
+    def _log_op(self, depth: int, program: TransformProgram, loss: float) -> None:
+        path = self._format_program_path(program)
+        print(f"[A*] explore depth={depth} loss={loss:.4f} path={path}")
+
+    def _log_skip_path(self, depth: int, program: TransformProgram, loss: float) -> None:
+        path = self._format_program_path(program)
+        print(f"[A*] skip depth={depth} loss={loss:.4f} reason=visited path={path}")
 
     def _log_closest_path(self, depth: int, program: TransformProgram, loss: float) -> None:
         path = self._format_program_path(program)
@@ -387,6 +398,13 @@ class AStarProgramSearch:
                 params={},
             )
         )
+        actions.append(
+            Operation(
+                type=OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
 
         # Span matching same-color endpoints along rows/columns
         actions.append(
@@ -414,6 +432,13 @@ class AStarProgramSearch:
                     params={"enclosed_color": enclosed_color, "exterior_color": -1},
                 )
             )
+            actions.append(
+                Operation(
+                    type=OperationType.FILL_ENCLOSED_ZEROS,
+                    selector=Selector.ALL,
+                    params={"enclosed_color": enclosed_color, "exterior_color": -1, "mode": "local_component_mode"},
+                )
+            )
             for exterior_color in output_colors or [3]:
                 actions.append(
                     Operation(
@@ -423,9 +448,18 @@ class AStarProgramSearch:
                     )
                 )
 
+        # Cleanup: remove singleton non-zero objects
+        actions.append(
+            Operation(
+                type=OperationType.REMOVE_SINGLE_PIXEL_OBJECTS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         # Logical ops between subgrids (auto-detect the separator)
         output_colors = [c for c in palette if c != 0]
-        logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR']
+        logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR', 'FIT_ADD']
         split_directions = ['ROW', 'COL']
         for logic_op in logic_ops:
             for out_color in output_colors or [1]:

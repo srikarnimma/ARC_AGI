@@ -27,8 +27,10 @@ class OperationType(Enum):
     NOR = "nor"
     SWAP_COLORS = "swap_colors"
     FILL_ENCLOSED_ZEROS = "fill_enclosed_zeros"
+    REMOVE_SINGLE_PIXEL_OBJECTS = "remove_single_pixel_objects"
     CROP_RECOLOR_BY_CORNER_MARKERS = "crop_recolor_by_corner_markers"
     SPAN_MATCHING_COLOR_ENDPOINTS = "span_matching_color_endpoints"
+    RECOLOR_MAIN_BY_EXTERNAL_PAIRS = "recolor_main_by_external_pairs"
 
 
 class Selector(Enum):

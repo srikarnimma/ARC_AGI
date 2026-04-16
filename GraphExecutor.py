@@ -7,7 +7,7 @@ from typing import Optional, Set, Tuple
 from collections import deque
 from GraphSemanticNetwork import SemanticGraph
 from GraphDSL import TransformProgram, OperationType, Selector
-from GraphObjectExtractor import Object
+from GraphObjectExtractor import Object, ObjectExtractor
 
 
 class GraphExecutor:
@@ -21,9 +21,11 @@ class GraphExecutor:
             OperationType.MIRROR_HORIZONTAL,
             OperationType.CROP_NONZERO_BBOX,
             OperationType.FILL_ENCLOSED_ZEROS,
+            OperationType.REMOVE_SINGLE_PIXEL_OBJECTS,
             OperationType.CROP_RECOLOR_BY_CORNER_MARKERS,
             OperationType.SPAN_MATCHING_COLOR_ENDPOINTS,
             OperationType.AND_SPLIT,
+            OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -191,7 +193,17 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 enclosed_color = operation.params.get('enclosed_color', 2)
                 exterior_color = operation.params.get('exterior_color', -1)
-                current_grid = self._fill_enclosed_zeros(grid_state, enclosed_color, exterior_color)
+                mode = operation.params.get('mode', 'global')
+                current_grid = self._fill_enclosed_zeros(grid_state, enclosed_color, exterior_color, mode)
+
+            elif operation.type == OperationType.REMOVE_SINGLE_PIXEL_OBJECTS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._remove_single_pixel_objects(grid_state)
 
             elif operation.type == OperationType.CROP_RECOLOR_BY_CORNER_MARKERS:
                 if current_grid is not None:
@@ -211,6 +223,15 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 include_cols = bool(operation.params.get('include_cols', False))
                 current_grid = self._span_matching_color_endpoints(grid_state, include_cols=include_cols)
+
+            elif operation.type == OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._recolor_main_by_external_pairs(grid_state)
 
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
@@ -425,7 +446,13 @@ class GraphExecutor:
             rows, cols = zip(*new_pixels)
             obj.bbox = (min(rows), min(cols), max(rows), max(cols))
 
-    def _fill_enclosed_zeros(self, grid: np.ndarray, enclosed_color: int, exterior_color: int = -1) -> np.ndarray:
+    def _fill_enclosed_zeros(self, grid: np.ndarray, enclosed_color: int, exterior_color: int = -1, mode: str = 'global') -> np.ndarray:
+        # Modes:
+        # - global: original behavior
+        # - local_component_mode: fill each component's enclosed holes by local mode
+        if mode in {'local_component_mode', 'local_mode', 'local'}:
+            return self._fill_enclosed_by_local_mode(grid)
+
         # Fill zero-valued connected components:
         # - Components touching border are "exterior"
         # - Remaining components are "enclosed"
@@ -653,12 +680,42 @@ class GraphExecutor:
 
         return output
 
+    def _remove_single_pixel_objects(self, grid: np.ndarray) -> np.ndarray:
+        # Reuse the object extractor and drop all objects whose area is 1.
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        objects = extractor.extract(grid)
+
+        if not objects:
+            return grid.copy()
+
+        output = np.zeros_like(grid)
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', False):
+                continue
+            if len(obj.pixels) <= 1:
+                continue
+            for row, col in obj.pixels:
+                output[row, col] = obj.color
+
+        return output
+
     def _logical_and_split(self, grid: np.ndarray, separator_color: int | None, output_color: int, logic_op: str = 'AND', split_direction: str = 'AUTO') -> np.ndarray:
         # Split grid on separator line and apply logical operation to the two halves
         # split_direction: 'AUTO' (detect both), 'ROW' (horizontal split only), 'COL' (vertical split only)
         height, width = grid.shape
 
         def _apply_logic(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+            if logic_op == 'FIT_ADD':
+                conflict = (lhs != 0) & (rhs != 0)
+                if np.any(conflict):
+                    return lhs.copy()
+                output = lhs.copy()
+                output[rhs != 0] = rhs[rhs != 0]
+                return output
+
             output = np.zeros_like(lhs)
             for r in range(lhs.shape[0]):
                 for c in range(lhs.shape[1]):
@@ -738,3 +795,151 @@ class GraphExecutor:
                 return _apply_logic(left, right)
 
         return grid.copy()
+
+    def _recolor_main_by_external_pairs(self, grid: np.ndarray) -> np.ndarray:
+        # Find the largest non-zero connected component (the "main" shape),
+        # infer recolor rules from external adjacent horizontal color pairs,
+        # recolor cells in the main component, and crop to the main bbox.
+        if grid.size == 0:
+            return grid.copy()
+
+        rows, cols = grid.shape
+        nonzero = (grid != 0)
+        if not np.any(nonzero):
+            return grid.copy()
+
+        visited = np.zeros_like(nonzero, dtype=bool)
+        largest_component: set[Tuple[int, int]] = set()
+
+        for r in range(rows):
+            for c in range(cols):
+                if not nonzero[r, c] or visited[r, c]:
+                    continue
+                comp: set[Tuple[int, int]] = set()
+                queue = deque([(r, c)])
+                visited[r, c] = True
+                while queue:
+                    cr, cc = queue.popleft()
+                    comp.add((cr, cc))
+                    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nr, nc = cr + dr, cc + dc
+                        if 0 <= nr < rows and 0 <= nc < cols and nonzero[nr, nc] and not visited[nr, nc]:
+                            visited[nr, nc] = True
+                            queue.append((nr, nc))
+                if len(comp) > len(largest_component):
+                    largest_component = comp
+
+        if not largest_component:
+            return grid.copy()
+
+        main_mask = np.zeros_like(nonzero, dtype=bool)
+        for r, c in largest_component:
+            main_mask[r, c] = True
+
+        # Build recolor map from external horizontal pairs: [new, old].
+        recolor_map: dict[int, int] = {}
+        for r in range(rows):
+            c = 0
+            while c < cols - 1:
+                left_val = int(grid[r, c])
+                right_val = int(grid[r, c + 1])
+                if (
+                    left_val != 0
+                    and right_val != 0
+                    and not main_mask[r, c]
+                    and not main_mask[r, c + 1]
+                ):
+                    recolor_map[right_val] = left_val
+                    c += 2
+                    continue
+                c += 1
+
+        # Apply mapping only on the main component.
+        output = grid.copy()
+        if recolor_map:
+            for r, c in largest_component:
+                value = int(output[r, c])
+                if value in recolor_map:
+                    output[r, c] = recolor_map[value]
+
+        main_positions = np.argwhere(main_mask)
+        min_r, min_c = main_positions.min(axis=0)
+        max_r, max_c = main_positions.max(axis=0)
+        return output[min_r:max_r + 1, min_c:max_c + 1]
+
+    def _fill_enclosed_by_local_mode(self, grid: np.ndarray) -> np.ndarray:
+        # Reuse extracted objects to find hollow components, then fill enclosed
+        # cells using the local mode of colors inside each object's bounds.
+        if grid.size == 0:
+            return grid.copy()
+
+        def _mode_with_tiebreak(values: list[int]) -> int | None:
+            if not values:
+                return None
+            counts: dict[int, int] = {}
+            for value in values:
+                counts[value] = counts.get(value, 0) + 1
+            max_count = max(counts.values())
+            candidates = [value for value, count in counts.items() if count == max_count]
+            return min(candidates)
+
+        extractor = ObjectExtractor()
+        objects = extractor.extract(grid)
+        if not objects:
+            return grid.copy()
+
+        output = grid.copy()
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', False):
+                continue
+            if not getattr(obj, 'is_hollow', False):
+                continue
+
+            min_r, min_c, max_r, max_c = obj.bbox
+            sub = output[min_r:max_r + 1, min_c:max_c + 1]
+            sub_h, sub_w = sub.shape
+            if sub_h < 3 or sub_w < 3:
+                continue
+
+            comp_mask = np.zeros((sub_h, sub_w), dtype=bool)
+            for pr, pc in obj.pixels:
+                comp_mask[pr - min_r, pc - min_c] = True
+
+            free_mask = ~comp_mask
+            outside = np.zeros_like(free_mask, dtype=bool)
+            q2 = deque()
+
+            for sc in range(sub_w):
+                if free_mask[0, sc] and not outside[0, sc]:
+                    outside[0, sc] = True
+                    q2.append((0, sc))
+                if free_mask[sub_h - 1, sc] and not outside[sub_h - 1, sc]:
+                    outside[sub_h - 1, sc] = True
+                    q2.append((sub_h - 1, sc))
+            for sr in range(sub_h):
+                if free_mask[sr, 0] and not outside[sr, 0]:
+                    outside[sr, 0] = True
+                    q2.append((sr, 0))
+                if free_mask[sr, sub_w - 1] and not outside[sr, sub_w - 1]:
+                    outside[sr, sub_w - 1] = True
+                    q2.append((sr, sub_w - 1))
+
+            while q2:
+                cr, cc = q2.popleft()
+                for d_row, d_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nr, nc = cr + d_row, cc + d_col
+                    if 0 <= nr < sub_h and 0 <= nc < sub_w and free_mask[nr, nc] and not outside[nr, nc]:
+                        outside[nr, nc] = True
+                        q2.append((nr, nc))
+
+            enclosed = free_mask & (~outside)
+            if not np.any(enclosed):
+                continue
+
+            cue_values = [int(v) for v in grid[min_r:max_r + 1, min_c:max_c + 1][enclosed].ravel().tolist() if int(v) != 0]
+            fill_color = _mode_with_tiebreak(cue_values) if cue_values else int(obj.color)
+
+            sub[enclosed] = fill_color
+            output[min_r:max_r + 1, min_c:max_c + 1] = sub
+
+        return output
