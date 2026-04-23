@@ -27,6 +27,7 @@ class GraphExecutor:
             OperationType.AND_SPLIT,
             OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS,
             OperationType.CONTEXTUAL_SYMMETRY_FILL,
+            OperationType.SPIRAL_FILL,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -71,8 +72,9 @@ class GraphExecutor:
             # print(f"[GraphExecutor] Applying {operation.type.name}")
             if current_grid is not None and not self._is_grid_operation(operation.type):
                 # Object-level ops cannot be applied meaningfully after switching
-                # to grid-level mode; skip them.
-                continue
+                # to grid-level mode; RECOLOR is a special case handled on grid.
+                if operation.type != OperationType.RECOLOR:
+                    continue
 
             if current_grid is None and not self._is_grid_operation(operation.type):
                 object_state_dirty = True
@@ -83,9 +85,24 @@ class GraphExecutor:
             # Apply the op
             if operation.type == OperationType.RECOLOR:
                 new_color = operation.params.get('new_color', 0)
-                for obj_id in matching_ids:
-                    if obj_id in objects_map:
-                        objects_map[obj_id].color = new_color
+                if current_grid is not None:
+                    print("------")
+                    grid_state = current_grid.copy()
+                    print(operation.selector, operation.params.get('color', None), new_color)
+                    print(grid_state)
+                    if operation.selector == Selector.BY_COLOR:
+                        source_color = operation.params.get('color', None)
+                        if source_color is not None:
+                            grid_state[grid_state == source_color] = new_color
+                    elif operation.selector == Selector.ALL:
+                        grid_state[grid_state != 0] = new_color
+                    current_grid = grid_state
+                    print(current_grid)
+                    print("~~~~~~~~~")
+                else:
+                    for obj_id in matching_ids:
+                        if obj_id in objects_map:
+                            objects_map[obj_id].color = new_color
             
             elif operation.type == OperationType.TRANSLATE:
                 offset_r = operation.params.get('offset_r', 0)
@@ -242,6 +259,16 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._contextual_symmetry_fill(grid_state)
+
+            elif operation.type == OperationType.SPIRAL_FILL:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                spiral_color = int(operation.params.get('color', 3))
+                current_grid = self._spiral_fill(grid_state, spiral_color)
 
             elif operation.type == OperationType.AND_SPLIT:
                 separator_color = operation.params.get('separator_color')
@@ -1038,5 +1065,46 @@ class GraphExecutor:
 
             sub[enclosed] = fill_color
             output[min_r:max_r + 1, min_c:max_c + 1] = sub
+
+        return output
+
+    def _spiral_fill(self, grid: np.ndarray, color: int = 3) -> np.ndarray:
+        # Draw a one-cell-thick inward spiral with one-cell spacing.
+        if grid.size == 0:
+            return grid.copy()
+
+        rows, cols = grid.shape
+        output = np.zeros_like(grid)
+
+        # Directions: right, down, left, up
+        directions = ((0, 1), (1, 0), (0, -1), (-1, 0))
+        direction_idx = 0
+        row, col = 0, 0
+
+        def _in_bounds(r: int, c: int) -> bool:
+            return 0 <= r < rows and 0 <= c < cols
+
+        while True:
+            output[row, col] = color
+
+            d_row, d_col = directions[direction_idx]
+            next_r, next_c = row + d_row, col + d_col
+            far_r, far_c = row + 2 * d_row, col + 2 * d_col
+
+            must_turn = (
+                (not _in_bounds(next_r, next_c))
+                or output[next_r, next_c] != 0
+                or (_in_bounds(far_r, far_c) and output[far_r, far_c] != 0)
+            )
+
+            if must_turn:
+                direction_idx = (direction_idx + 1) % 4
+                d_row, d_col = directions[direction_idx]
+                next_r, next_c = row + d_row, col + d_col
+
+                if not _in_bounds(next_r, next_c) or output[next_r, next_c] != 0:
+                    break
+
+            row, col = next_r, next_c
 
         return output

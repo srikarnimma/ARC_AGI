@@ -32,6 +32,7 @@ class OperationType(Enum):
     SPAN_MATCHING_COLOR_ENDPOINTS = "span_matching_color_endpoints"
     RECOLOR_MAIN_BY_EXTERNAL_PAIRS = "recolor_main_by_external_pairs"
     CONTEXTUAL_SYMMETRY_FILL = "contextual_symmetry_fill"
+    SPIRAL_FILL = "spiral_fill"
 
 
 class Selector(Enum):

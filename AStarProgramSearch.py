@@ -257,8 +257,11 @@ class AStarProgramSearch:
 
         actions: List[Operation] = []
 
-        # Try recoloring each color combo
-        for from_color in colors_in:
+        # Try recoloring each color combo.
+        # Include generated colors (e.g., SPIRAL_FILL seed color 3), not only
+        # colors present in the raw inputs.
+        recolor_sources = sorted(colors_in.union(colors_out).union({3}))
+        for from_color in recolor_sources:
             for to_color in palette:
                 if to_color == from_color:
                     continue
@@ -410,6 +413,15 @@ class AStarProgramSearch:
                 type=OperationType.CONTEXTUAL_SYMMETRY_FILL,
                 selector=Selector.ALL,
                 params={},
+            )
+        )
+
+        # Full-grid spiral generation
+        actions.append(
+            Operation(
+                type=OperationType.SPIRAL_FILL,
+                selector=Selector.ALL,
+                params={"color": 3},
             )
         )
 

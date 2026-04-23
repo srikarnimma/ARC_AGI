@@ -90,30 +90,27 @@ class ArcAgent:
             if candidates and training_outputs:
                 ranked = self.ranker.rank(candidates, training_outputs[0])
                 final_predictions = [out for out, _, _ in ranked[:3]]
-                if self.debug:
-                    for index, (out, initial_score, similarity_score) in enumerate(ranked[:3], start=1):
-                        self._debug_print_grid(
-                            f"[ArcAgent] Final prediction {index} (initial={initial_score:.4f}, similarity={similarity_score:.4f}):",
-                            out,
-                        )
+                print(f"[ArcAgent] Selected A* ops: {format_program_ops(astar_program)}")
+                for index, (out, initial_score, similarity_score) in enumerate(ranked[:3], start=1):
+                    self._debug_print_grid(
+                        f"[ArcAgent] Final prediction {index} (initial={initial_score:.4f}, similarity={similarity_score:.4f}):",
+                        out,
+                    )
                 if timeout_triggered:
-                    if self.debug:
-                        print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                     self._debug_print_grid("[ArcAgent] Timeout final output:", final_predictions[0])
                 return final_predictions
             if candidates:
                 final_predictions = [out for out, _ in candidates[:3]]
-                if self.debug:
-                    for index, out in enumerate(final_predictions, start=1):
-                        self._debug_print_grid(f"[ArcAgent] Final prediction {index}:", out)
+                for index, out in enumerate(final_predictions, start=1):
+                    print(f"[ArcAgent] Selected A* ops: {format_program_ops(astar_program)}")
+                    self._debug_print_grid(f"[ArcAgent] Final prediction {index}:", out)
                 if timeout_triggered:
-                    if self.debug:
-                        print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                     self._debug_print_grid("[ArcAgent] Timeout final output:", final_predictions[0])
                 return final_predictions
             if timeout_triggered:
-                if self.debug:
-                    print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
+                print(f"[ArcAgent] Timeout reached. Selected A* ops: {format_program_ops(astar_program)}")
                 self._debug_print_grid("[ArcAgent] Timeout final output:", test_input)
             return [test_input]
         

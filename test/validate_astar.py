@@ -7,6 +7,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
+import json
 
 from GraphObjectExtractor import ObjectExtractor
 from GraphSemanticNetwork import GraphBuilder
@@ -237,11 +238,55 @@ def test_astar_logical_and_split():
     return True
 
 
+def test_astar_spiral_fill_28e73c20():
+    print("\n[TEST 4] A* - Spiral Fill (28e73c20)")
+
+    project_root = os.path.join(os.path.dirname(__file__), '..')
+    problem_path = os.path.join(project_root, 'Milestones', 'B', '28e73c20.json')
+
+    with open(problem_path, 'r', encoding='utf-8') as handle:
+        problem = json.load(handle)
+
+    training_pairs = []
+    for example in problem['train']:
+        input_grid = np.array(example['input'], dtype=np.uint8)
+        output_grid = np.array(example['output'], dtype=np.uint8)
+        training_pairs.append(_build_pair(input_grid, output_grid))
+
+    search = AStarProgramSearch(
+        GraphExecutor(),
+        OutputVerifier(),
+        max_depth=1,
+        max_expansions=400,
+        debug=True,
+        debug_every=1,
+    )
+    result = search.search(training_pairs)
+
+    assert result is not None, "Expected a result"
+    print(f"  Result program: {result.program}")
+    print(f"  Result loss: {result.loss:.4f}")
+    assert result.loss == 0.0, f"Expected perfect loss, got {result.loss:.4f}"
+
+    test_input = np.array(problem['test'][0]['input'], dtype=np.uint8)
+    test_expected = np.array(problem['test'][0]['output'], dtype=np.uint8)
+    test_objects = ObjectExtractor().extract(test_input)
+    test_graph = GraphBuilder().build(test_objects)
+    test_predicted = GraphExecutor().execute(test_input, test_graph, result.program)
+
+    print(f"  Test predicted shape: {test_predicted.shape}")
+    assert np.array_equal(test_predicted, test_expected), "Spiral fill test output mismatch"
+
+    print("  ✓ Spiral fill solved with A*")
+    return True
+
+
 def main():
     results = []
     results.append(test_astar_recolor())
     results.append(test_astar_delete_inner())
     results.append(test_astar_logical_and_split())
+    results.append(test_astar_spiral_fill_28e73c20())
 
     print("\n" + "=" * 50)
     if all(results):
