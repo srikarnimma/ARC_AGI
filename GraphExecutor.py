@@ -30,6 +30,7 @@ class GraphExecutor:
             OperationType.SPIRAL_FILL,
             OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
             OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
+            OperationType.TETRIS,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -344,6 +345,15 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._draw_diagonals_from_single_pixels(grid_state)
+
+            elif operation.type == OperationType.TETRIS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                # elif object_state_dirty:
+                #     grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._tetris(grid_state)
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -1319,3 +1329,61 @@ class GraphExecutor:
         # print(output)
         # print("~~~~~~~~")
         return output
+    
+    def _tetris(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("--tetris--")
+        # print(grid)
+        
+        extractor = ObjectExtractor(connectivity="4")
+        objects = extractor.extract(grid)
+        output = grid.copy()
+        height, width = grid.shape
+
+        # print(objects)
+
+        # Get boundaries
+        color_sides = {}
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', False) or len(obj.pixels) == 1:
+                continue
+            
+            if (1,0) in obj.pixels:
+                color_sides[obj.color] = "left"
+            elif (0,1) in obj.pixels:
+                color_sides[obj.color] = "top"
+            elif (1, width - 1) in obj.pixels:
+                color_sides[obj.color] = "right"
+            else:
+                color_sides[obj.color] = "bottom"
+        
+        # print(color_sides, len(objects))
+        final_output = np.zeros_like(grid)
+        for obj in objects:
+            if not getattr(obj, 'is_grid_boundary', False) and len(obj.pixels) > 1:
+                for pr, pc in obj.pixels:
+                    final_output[pr, pc] = obj.color
+
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', True) or len(obj.pixels) != 1:
+                continue
+
+            (r, c) = next(iter(obj.pixels))
+            side = color_sides.get(obj.color) # Use .get() to be safe
+            
+            if side == "left":
+                final_output[r, 1] = obj.color
+            elif side == "right":
+                final_output[r, width - 2] = obj.color
+            elif side == "top":
+                final_output[1, c] = obj.color
+            elif side == "bottom":
+                final_output[height - 2, c] = obj.color
+            # Notice: No final_output[r, c] = 0 needed because we started with a fresh grid
+
+        # print(final_output)
+        # print("~~~~~")
+        return final_output
+

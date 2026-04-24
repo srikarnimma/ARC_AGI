@@ -589,6 +589,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Tetris
+        actions.append(
+            Operation(
+                type=OperationType.TETRIS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

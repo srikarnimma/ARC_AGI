@@ -35,6 +35,7 @@ class OperationType(Enum):
     SPIRAL_FILL = "spiral_fill"
     ENLARGE_SINGLE_PIXEL_OBJECTS = "enlarge_single_pixel_objects"
     DRAW_DIAGONALS_FROM_SINGLE_PIXELS = "draw_diagonals_from_single_pixels"
+    TETRIS = "tetris"
 
 
 class Selector(Enum):

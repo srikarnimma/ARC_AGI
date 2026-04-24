@@ -32,6 +32,9 @@ class Object:
         self.orientation = "unknown"  # "horizontal", "vertical", "diagonal", "unknown"
         self.area = area
         self.perimeter = perimeter
+    
+    def __str__(self):
+        return f"<Object color={self.color}, pixels={self.pixels}>"
 
 # Main extractor class
 # Reads a grid and outputs detected objects
@@ -40,53 +43,38 @@ class ObjectExtractor:
         self.connectivity = connectivity
     
     def extract(self, grid: np.ndarray) -> List[Object]:
-        # Extract objects from grid by color & detect features
-        # Returns all objs (colored + grid boundary)
         objects: List[Object] = []
+        # visited keeps track of EVERY pixel we've assigned to an object
         visited = np.zeros_like(grid, dtype=bool)
         obj_id = 0
         
-        # Get unique non-zero colors
-        colors = np.unique(grid[grid != 0])
-        # print(f"Found colors: {colors}")
-        
-        for color in colors:
-            color_mask = (grid == color) & ~visited
-            components: List[Set[Tuple[int, int]]] = []
+        height, width = grid.shape
 
-            # BFS to find connected components for this color
-            for r in range(grid.shape[0]):
-                for c in range(grid.shape[1]):
-                    if color_mask[r, c]:
-                        pixels = self._bfs(grid, visited, r, c, color)
-                        if pixels:
-                            components.append(pixels)
-
-            has_large_component = any(len(pixels) >= 2 for pixels in components)
-
-            for pixels in components:
-                # Filter out isolated single-pixel noise only when larger components exist.
-                if len(pixels) < 2 and has_large_component:
+        # Iterate through every cell in the grid
+        for r in range(height):
+            for c in range(width):
+                color = grid[r, c]
+                
+                # Skip background (0) and pixels we've already assigned to an object
+                if color == 0 or visited[r, c]:
                     continue
-                # print(f"  Color {color}: found component with {len(pixels)} pixels")
-                grid_height, grid_width = grid.shape
-                obj = self._create_object(obj_id, color, pixels, (grid_height, grid_width))
-                objects.append(obj)
-                obj_id += 1
+                
+                # Start a BFS to find all connected pixels of the SAME color
+                # The BFS will mark all these pixels as 'visited'
+                pixels = self._bfs(grid, visited, r, c, color)
+                
+                if pixels:
+                    # Every component found here is a unique object.
+                    # If it's one pixel, it's a single-pixel object.
+                    # If it's more, it's a large object. 
+                    # BFS ensures they don't overlap.
+                    obj = self._create_object(obj_id, color, pixels, (height, width))
+                    objects.append(obj)
+                    obj_id += 1
         
-        # Always add grid boundary object (metadata for entire grid)
-        grid_height, grid_width = grid.shape
-        grid_obj = Object(
-            id=-1,
-            color=0,
-            pixels=set(),
-            bbox=(0, 0, grid_height - 1, grid_width - 1),
-            is_grid_boundary=True,
-            area=grid_height * grid_width,
-            perimeter=2 * (grid_height + grid_width)
-        )
+        # Add grid boundary metadata...
+        grid_obj = Object(id=-1, color=0, pixels=set(), bbox=(0,0,height-1,width-1), is_grid_boundary=True)
         objects.append(grid_obj)
-        # print(f"Extracted {len(objects)-1} colored objects + grid boundary")
         
         return objects
     
