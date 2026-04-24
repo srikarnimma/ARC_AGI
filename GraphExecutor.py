@@ -28,6 +28,8 @@ class GraphExecutor:
             OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS,
             OperationType.CONTEXTUAL_SYMMETRY_FILL,
             OperationType.SPIRAL_FILL,
+            OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
+            OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -324,6 +326,24 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._logical_and_split(grid_state, separator_color, output_color, logic_op, split_direction)
+
+            elif operation.type == OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._enlarge_single_pixel_objects(grid_state)
+
+            elif operation.type == OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._draw_diagonals_from_single_pixels(grid_state)
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -1236,4 +1256,66 @@ class GraphExecutor:
 
             row, col = next_r, next_c
 
+        return output
+
+    def _enlarge_single_pixel_objects(self, grid: np.ndarray) -> np.ndarray:
+        # Enlarge all single-pixel objects to 3x3 squares centered on the pixel, preserving color
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("-----")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="4")
+        objects = extractor.extract(grid)
+        output = grid.copy()
+        height, width = grid.shape
+
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', False):
+                continue
+            if len(obj.pixels) == 1:
+                (r, c) = next(iter(obj.pixels))
+                color = obj.color
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < height and 0 <= nc < width:
+                            output[nr, nc] = color
+
+        # print(output)
+        # print("~~~~~~")
+        return output
+
+    def _draw_diagonals_from_single_pixels(self, grid: np.ndarray) -> np.ndarray:
+        # Draw diagonals (big X) from each single pixel object, using the object's color
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("-----")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="4")
+        objects = extractor.extract(grid)
+        output = grid.copy()
+        height, width = grid.shape
+
+        for obj in objects:
+            if getattr(obj, 'is_grid_boundary', False):
+                continue
+            if len(obj.pixels) == 1:
+                (r, c) = next(iter(obj.pixels))
+                color = obj.color
+                # Draw diagonals
+                for d in range(-min(r, c), min(height - r, width - c)):
+                    nr, nc = r + d, c + d
+                    if 0 <= nr < height and 0 <= nc < width:
+                        output[nr, nc] = color
+                for d in range(-min(r, width - c - 1), min(height - r, c + 1)):
+                    nr, nc = r + d, c - d
+                    if 0 <= nr < height and 0 <= nc < width:
+                        output[nr, nc] = color
+        
+        # print(output)
+        # print("~~~~~~~~")
         return output

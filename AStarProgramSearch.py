@@ -571,6 +571,24 @@ class AStarProgramSearch:
                             )
                         )
 
+        # Enlarge single-pixel objects (for ce22a75a and similar)
+        actions.append(
+            Operation(
+                type=OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
+        # Draw x
+        actions.append(
+            Operation(
+                type=OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

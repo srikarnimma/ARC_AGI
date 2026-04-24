@@ -1,39 +1,65 @@
 
-=== Running Milestone B (16 problem(s)) ===
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=AND, output_color=2, split_direction=COL)
-[1/16] 0520fde7 | correct=True | time=0.028s
-[ArcAgent] Selected A* ops: CROP_NONZERO_BBOX(ALL)
-[2/16] 1cf80156 | correct=True | time=0.291s
-[ArcAgent] Selected A* ops: SPIRAL_FILL(ALL; color=3) -> RECOLOR(BY_COLOR; color=3, new_color=2)
-[3/16] 28e73c20 | correct=True | time=2.756s
-[ArcAgent] Selected A* ops: HOLLOW(ALL)
-[4/16] 4347f46a | correct=True | time=0.034s
-[ArcAgent] Selected A* ops: ROTATE_GRID(ALL; angle=180)
-[5/16] 6150a2bd | correct=True | time=0.012s
-[ArcAgent] Selected A* ops: <none>
-[6/16] 623ea044 | correct=False | time=4.110s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=NOR, output_color=3, split_direction=ROW)
-[7/16] 6430c8c4 | correct=True | time=0.044s
-[ArcAgent] Selected A* ops: RECOLOR(BY_COLOR; color=6, new_color=2) -> FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=2)
-[8/16] b1948b0a | correct=True | time=0.024s
-[ArcAgent] Selected A* ops: SWAP_COLORS(ALL; object_id_1=0, object_id_2=1) -> CROP_NONZERO_BBOX(ALL)
-[9/16] b94a9452 | correct=True | time=1.490s
-[ArcAgent] Selected A* ops: RECOLOR(BY_COLOR; color=5, new_color=1) -> SPAN_MATCHING_COLOR_ENDPOINTS(ALL; include_cols=True)
-[10/16] ce22a75a | correct=False | time=1.044s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=OR, output_color=3, split_direction=ROW)
-[11/16] ce4f8723 | correct=True | time=0.039s
-[ArcAgent] Selected A* ops: REMOVE_SINGLE_PIXEL_OBJECTS(ALL)
-[12/16] d687bc17 | correct=False | time=9.000s
-[ArcAgent] Selected A* ops: ROTATE_GRID(ALL; angle=90)
-[13/16] ed36ccf7 | correct=True | time=0.007s
-[ArcAgent] Selected A* ops: MIRROR_HORIZONTAL(ALL)
-[14/16] f25ffba3 | correct=True | time=0.009s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=NOR, output_color=3, split_direction=COL)
-[15/16] f2829549 | correct=True | time=0.048s
-[ArcAgent] Selected A* ops: RECOLOR(BY_COLOR; color_from=other_nonzero, exclude_color=5, new_color=0) -> RECOLOR(BY_COLOR; color=5, new_color_from=other_nonzero_input)
-[16/16] f76d97a5 | correct=True | time=0.026s
-Milestone B summary: 13/16 (81.2%) in 18.96s | results: Milestone_B_Results.csv
+=== Running Milestone B (1 problem(s)) ===
+------
+[ArcAgent] Problem: 623ea044
+[ArcAgent] Test input grid:
+[[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 6 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]]
+[ArcAgent] Proposed output (A* | loss=0.0000 | score=1.0000):
+[[0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 6]
+ [0 0 0 0 0 0 0 0 0 6 0 0 0 0 0 6 0]
+ [0 0 0 0 0 0 0 0 0 0 6 0 0 0 6 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 6 0 6 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 6 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 6 0 6 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 6 0 0 0 6 0 0]
+ [0 0 0 0 0 0 0 0 0 6 0 0 0 0 0 6 0]
+ [0 0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 6]
+ [0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 6 0 0 0 0 0 0 0 0 0 0 0 0 0]]
+[ArcAgent] Selected A* ops: DRAW_DIAGONALS_FROM_SINGLE_PIXELS(ALL)
+[ArcAgent] Final prediction 1 (initial=1.0000, similarity=0.8222):
+[[0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 6]
+ [0 0 0 0 0 0 0 0 0 6 0 0 0 0 0 6 0]
+ [0 0 0 0 0 0 0 0 0 0 6 0 0 0 6 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 6 0 6 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 0 6 0 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 0 6 0 6 0 0 0]
+ [0 0 0 0 0 0 0 0 0 0 6 0 0 0 6 0 0]
+ [0 0 0 0 0 0 0 0 0 6 0 0 0 0 0 6 0]
+ [0 0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 6]
+ [0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 0 6 0 0 0 0 0 0 0 0 0 0 0 0]
+ [0 0 0 6 0 0 0 0 0 0 0 0 0 0 0 0 0]]
+[1/1] 623ea044 | correct=True | time=0.046s
+Milestone B summary: 1/1 (100.0%) in 0.05s | results: Milestone_B_Results.csv
 
 === Final Summary ===
-Milestone B: 13/16 (81.2%) in 18.96s
-Overall: 13/16 (81.2%)
+Milestone B: 1/1 (100.0%) in 0.05s
+Overall: 1/1 (100.0%)

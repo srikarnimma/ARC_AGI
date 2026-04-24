@@ -33,6 +33,8 @@ class OperationType(Enum):
     RECOLOR_MAIN_BY_EXTERNAL_PAIRS = "recolor_main_by_external_pairs"
     CONTEXTUAL_SYMMETRY_FILL = "contextual_symmetry_fill"
     SPIRAL_FILL = "spiral_fill"
+    ENLARGE_SINGLE_PIXEL_OBJECTS = "enlarge_single_pixel_objects"
+    DRAW_DIAGONALS_FROM_SINGLE_PIXELS = "draw_diagonals_from_single_pixels"
 
 
 class Selector(Enum):
