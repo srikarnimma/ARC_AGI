@@ -108,6 +108,7 @@ class AStarProgramSearch:
                 best_program = program
 
             if loss == 0.0:
+                print("FOUND A ZERO LOSS")
                 return SearchResult(program=program, loss=loss, expansions=expansions)
 
             if depth >= self.max_depth:
@@ -272,6 +273,37 @@ class AStarProgramSearch:
                         params={"color": from_color, "new_color": to_color},
                     )
                 )
+
+        # Context-aware recolors (resolve colors from each grid at execution time)
+        for anchor_color in recolor_sources:
+            actions.append(
+                Operation(
+                    type=OperationType.RECOLOR,
+                    selector=Selector.BY_COLOR,
+                    params={"color": anchor_color, "new_color_from": "other_nonzero"},
+                )
+            )
+            actions.append(
+                Operation(
+                    type=OperationType.RECOLOR,
+                    selector=Selector.BY_COLOR,
+                    params={"color": anchor_color, "new_color_from": "other_nonzero_input"},
+                )
+            )
+            actions.append(
+                Operation(
+                    type=OperationType.RECOLOR,
+                    selector=Selector.BY_COLOR,
+                    params={"color_from": "other_nonzero", "exclude_color": anchor_color, "new_color": 0},
+                )
+            )
+            actions.append(
+                Operation(
+                    type=OperationType.RECOLOR,
+                    selector=Selector.BY_COLOR,
+                    params={"color_from": "other_nonzero_input", "exclude_color": anchor_color, "new_color": 0},
+                )
+            )
 
         # Shape-driven recolor ops (uses extractor features like is_closed_shape)
         shape_labels = ["circle", "cycle", "triangle", "arrow"]
@@ -548,3 +580,11 @@ class AStarProgramSearch:
                 continue
             colors.update(int(value) for value in np.unique(grid))
         return colors
+
+def format_program_op(op: Operation) -> str:
+    params_items = ", ".join(f"{k}={v}" for k, v in sorted(op.params.items()))
+    if params_items:
+        st = (f"{op.type.name}({op.selector.name}; {params_items})")
+    else:
+        st = (f"{op.type.name}({op.selector.name})")
+    return st

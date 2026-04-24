@@ -144,7 +144,7 @@ class ObjectExtractor:
         obj.is_triangle = self._is_triangle(pixels, bbox)
         obj.is_grid = self._is_grid(pixels, bbox)
         obj.orientation = self._detect_orientation(pixels, bbox)
-        # print(f"    Features: hollow={obj.is_hollow}, arrow={obj.is_arrow}, spiral={obj.is_spiral}")
+        # print(f"    bbox: {obj.bbox}, pixels: {obj.pixels}, Features: hollow={obj.is_hollow}, arrow={obj.is_arrow}, spiral={obj.is_spiral}")
         
         return obj
     

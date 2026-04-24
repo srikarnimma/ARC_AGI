@@ -34,10 +34,13 @@ class GraphExecutor:
         # Run a transformation program on an input grid
         grid_height, grid_width = input_grid.shape
         # print(f"[GraphExecutor] Executing {len(program.operations)} ops on {grid_height}x{grid_width} grid")
-        
+
+        # Store the very original input grid for context across all steps
+        original_grid = input_grid.copy()
+
         # Start with blank output
         output_grid = np.zeros_like(input_grid)
-        
+
         # Create mutable copies of graph objects
         # Map object_id -> modified_object
         objects_map = {}
@@ -66,7 +69,7 @@ class GraphExecutor:
         # apply subsequent grid-level ops sequentially.
         current_grid: Optional[np.ndarray] = None
         object_state_dirty = False
-        
+
         # Apply each op in seq
         for operation in program.operations:
             # print(f"[GraphExecutor] Applying {operation.type.name}")
@@ -81,27 +84,66 @@ class GraphExecutor:
 
             # Find matching objs (used by object-level ops)
             matching_ids = self._select_objects(objects_map, operation.selector, operation.params)
-            
+
             # Apply the op
             if operation.type == OperationType.RECOLOR:
-                new_color = operation.params.get('new_color', 0)
-                if current_grid is not None:
-                    print("------")
-                    grid_state = current_grid.copy()
-                    print(operation.selector, operation.params.get('color', None), new_color)
-                    print(grid_state)
+                # print("[recolor in graphexec] ----")
+                # print("[recolor in graphexec] original grid\n", original_grid)
+                # print("[recolor in graphexec] curr grid\n", current_grid)
+                has_dynamic = (
+                    'new_color_from' in operation.params
+                    or 'color_from' in operation.params
+                )
+
+                if current_grid is not None or has_dynamic:
+                    if current_grid is not None:
+                        grid_state = current_grid.copy()
+                    # elif object_state_dirty:
+                    #     print("dirty gyal")
+                    #     grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                    else:
+                        grid_state = input_grid.copy()
+
+                    source_raw = operation.params.get('color_from', operation.params.get('color', None))
+                    source_color = self._resolve_recolor_value(
+                        source_raw,
+                        grid_state,
+                        input_grid=input_grid,
+                        original_grid=original_grid,
+                        exclude_color=operation.params.get('exclude_color', None),
+                    )
+
+                    new_raw = operation.params.get('new_color_from', operation.params.get('new_color', 0))
+                    new_color = self._resolve_recolor_value(
+                        new_raw,
+                        grid_state,
+                        input_grid=input_grid,
+                        original_grid=original_grid,
+                        source_color=source_color,
+                        exclude_color=operation.params.get('exclude_color', None),
+                    )
+                    if new_color is None:
+                        new_color = 0
+
+                    # print("[recolor in graphexec]", operation.selector, source_color, new_color)
+                    # print(grid_state)
                     if operation.selector == Selector.BY_COLOR:
-                        source_color = operation.params.get('color', None)
                         if source_color is not None:
                             grid_state[grid_state == source_color] = new_color
                     elif operation.selector == Selector.ALL:
                         grid_state[grid_state != 0] = new_color
+                    
+                    # print(grid_state)
+                    # print(source_raw, source_color, new_raw, new_color)
+                    # print("[recolor in graphexec] end grid\n", grid_state)
+                    # print("[recolor in graphexec]~~~~~~~~~")
                     current_grid = grid_state
-                    print(current_grid)
-                    print("~~~~~~~~~")
                 else:
+                    # print("Recoloring by object!!!!")
+                    new_color = operation.params.get('new_color', 0)
                     for obj_id in matching_ids:
                         if obj_id in objects_map:
+                            # print(objects_map[obj_id].color, new_color)
                             objects_map[obj_id].color = new_color
             
             elif operation.type == OperationType.TRANSLATE:
@@ -416,6 +458,93 @@ class GraphExecutor:
         
         return matching
         # print(f"[GraphExecutor] Selected {len(matching)} objects")
+
+    def _resolve_recolor_value(
+        self,
+        value: int | str | None,
+        grid: np.ndarray,
+        input_grid: np.ndarray | None = None,
+        original_grid: np.ndarray | None = None,
+        source_color: int | None = None,
+        exclude_color: int | None = None,
+    ) -> int | None:
+        if isinstance(value, int):
+            return value
+        if value is None:
+            return None
+
+        if value == 'same_as_source':
+            return source_color
+
+        nonzero = [int(color) for color in np.unique(grid) if int(color) != 0]
+        nonzero_input = []
+        nonzero_original = []
+        if input_grid is not None:
+            nonzero_input = [int(color) for color in np.unique(input_grid) if int(color) != 0]
+        if original_grid is not None:
+            nonzero_original = [int(color) for color in np.unique(original_grid) if int(color) != 0]
+
+        if not nonzero and not nonzero_input and not nonzero_original:
+            return None
+
+        if value == 'other_nonzero':
+            candidates = [color for color in nonzero if color != source_color and color != exclude_color]
+            if len(candidates) == 1:
+                return candidates[0]
+            if candidates:
+                return min(candidates)
+            return None
+
+        if value == 'other_nonzero_input':
+            # Prefer original grid for true input context if available
+            candidates = [color for color in (nonzero_original if nonzero_original else nonzero_input) if color != source_color and color != exclude_color]
+            # print(original_grid)
+            # print(candidates)
+            if len(candidates) == 1:
+                return candidates[0]
+            if candidates:
+                return min(candidates)
+            return None
+
+        if value in {'most_common_nonzero', 'least_common_nonzero'}:
+            counts: dict[int, int] = {}
+            for color in nonzero:
+                counts[color] = int(np.sum(grid == color))
+            if not counts:
+                return None
+
+            if value == 'most_common_nonzero':
+                max_count = max(counts.values())
+                winners = [color for color, count in counts.items() if count == max_count]
+                return min(winners)
+
+            min_count = min(counts.values())
+            winners = [color for color, count in counts.items() if count == min_count]
+            return min(winners)
+
+        if value in {'most_common_nonzero_input', 'least_common_nonzero_input'}:
+            # Use original grid if available for true input context
+            grid_to_use = original_grid if original_grid is not None else input_grid
+            color_list = nonzero_original if nonzero_original else nonzero_input
+            if grid_to_use is None:
+                return None
+
+            counts: dict[int, int] = {}
+            for color in color_list:
+                counts[color] = int(np.sum(grid_to_use == color))
+            if not counts:
+                return None
+
+            if value == 'most_common_nonzero_input':
+                max_count = max(counts.values())
+                winners = [color for color, count in counts.items() if count == max_count]
+                return min(winners)
+
+            min_count = min(counts.values())
+            winners = [color for color, count in counts.items() if count == min_count]
+            return min(winners)
+
+        return None
     
     def _translate_object(self, obj: Object, offset_r: int, offset_c: int, 
                          grid_height: int, grid_width: int) -> None:
