@@ -623,6 +623,22 @@ class AStarProgramSearch:
             )
         )
 
+        # Move towards each other
+        actions.append(
+            Operation(
+                type=OperationType.MOVE_TOWARD_OTHER,
+                selector=Selector.ALL,
+                params={"index": "0"},
+            )
+        )
+        actions.append(
+            Operation(
+                type=OperationType.MOVE_TOWARD_OTHER,
+                selector=Selector.ALL,
+                params={"index": "1"},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

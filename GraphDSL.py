@@ -38,6 +38,7 @@ class OperationType(Enum):
     DRAW_DIAGONALS_FROM_SINGLE_PIXELS = "draw_diagonals_from_single_pixels"
     TETRIS = "tetris"
     REFLECT_AGAINST_BRACKETS = "reflect_against_brackets"
+    MOVE_TOWARD_OTHER = "move_toward_other"
 
 
 class Selector(Enum):

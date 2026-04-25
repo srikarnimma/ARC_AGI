@@ -375,6 +375,19 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._tetris(grid_state)
+
+            elif operation.type == OperationType.MOVE_TOWARD_OTHER:
+                if len(objects_map) != 2:
+                    continue
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                index = int(operation.params.get('index', 0))
+                current_grid = self._move_toward_other(grid_state, index)
+
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -1537,4 +1550,52 @@ class GraphExecutor:
         # print(final_output)
         # print("~~~~~")
         return final_output
+    
+    def _move_toward_other(self, grid: np.ndarray, obj_idx: int) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("------")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="4")
+        objects = extractor.extract(grid)
+        # Remove the grid boundary metadata object
+        objects = [obj for obj in objects if not obj.is_grid_boundary]
+
+        if len(objects) < 2:
+            return grid.copy()
+        
+        # Define which object moves and which stays stationary
+        mover = objects[obj_idx]
+        anchor = objects[1 - obj_idx]
+
+        # Calculate centroids to determine direction
+        def get_centroid(obj):
+            coords = list(obj.pixels)
+            r_avg = sum(p[0] for p in coords) / len(coords)
+            c_avg = sum(p[1] for p in coords) / len(coords)
+            return r_avg, c_avg
+        
+        m_r, m_c = get_centroid(mover)
+        a_r, a_c = get_centroid(anchor)
+
+        dr = 1 if a_r > m_r else (-1 if a_r < m_r else 0)
+        dc = 1 if a_c > m_c else (-1 if a_c < m_c else 0)
+
+        # Apply the 1-step transformation
+        output = grid.copy()
+        
+        for r, c in mover.pixels:
+            output[r, c] = 0
+
+        height, width = grid.shape
+        for r, c in mover.pixels:
+            new_r, new_c = r + dr, c + dc
+            if 0 <= new_r < height and 0 <= new_c < width:
+                output[new_r, new_c] = mover.color
+
+        # print(output)
+        # print("~~~")
+        return output
 
