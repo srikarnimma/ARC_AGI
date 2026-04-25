@@ -30,6 +30,7 @@ class OperationType(Enum):
     REMOVE_SINGLE_PIXEL_OBJECTS = "remove_single_pixel_objects"
     CROP_RECOLOR_BY_CORNER_MARKERS = "crop_recolor_by_corner_markers"
     SPAN_MATCHING_COLOR_ENDPOINTS = "span_matching_color_endpoints"
+    SPAN_DOTTED = "span_dotted"
     RECOLOR_MAIN_BY_EXTERNAL_PAIRS = "recolor_main_by_external_pairs"
     CONTEXTUAL_SYMMETRY_FILL = "contextual_symmetry_fill"
     SPIRAL_FILL = "spiral_fill"

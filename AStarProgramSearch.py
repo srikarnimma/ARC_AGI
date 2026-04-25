@@ -473,6 +473,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Span dotted
+        actions.append(
+            Operation(
+                type=OperationType.SPAN_DOTTED,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         # Fill enclosed zero-regions (with optional exterior recolor)
         output_colors = [c for c in colors_out if c != 0]
         for enclosed_color in output_colors or [2]:
@@ -577,6 +586,13 @@ class AStarProgramSearch:
                 type=OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
                 selector=Selector.ALL,
                 params={},
+            )
+        )
+        actions.append(
+            Operation(
+                type=OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
+                selector=Selector.ALL,
+                params={"target_color": "in"},
             )
         )
 

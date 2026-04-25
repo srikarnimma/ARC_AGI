@@ -288,6 +288,13 @@ class GraphExecutor:
                 include_cols = bool(operation.params.get('include_cols', False))
                 current_grid = self._span_matching_color_endpoints(grid_state, include_cols=include_cols)
 
+            elif operation.type == OperationType.SPAN_DOTTED:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._span_dotted(grid_state)
+
             elif operation.type == OperationType.RECOLOR_MAIN_BY_EXTERNAL_PAIRS:
                 if current_grid is not None:
                     grid_state = current_grid
@@ -343,7 +350,13 @@ class GraphExecutor:
                     grid_state = self._render_objects(objects_map, grid_height, grid_width)
                 else:
                     grid_state = input_grid.copy()
-                current_grid = self._enlarge_single_pixel_objects(grid_state)
+                target_color_selector = operation.params.get('target_color', None)
+
+                target_colors = []
+                if target_color_selector == "in":
+                    target_colors = [int(color) for color in np.unique(current_grid) if int(color) != 0]
+
+                current_grid = self._enlarge_single_pixel_objects(grid_state, target_colors=target_colors)
 
             elif operation.type == OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS:
                 if current_grid is not None:
@@ -883,6 +896,58 @@ class GraphExecutor:
                     output[top:bottom + 1, col] = color
 
         return output
+    
+
+    # TODO: FIX THIS JOHNSON
+    def _span_dotted(self, grid: np.ndarray, bridge_color: int = 5, step: int = 2) -> np.ndarray:
+        # Connects non-zero endpoints in rows/cols with a dotted line of bridge_color.
+        if grid.size == 0:
+            return grid.copy()
+
+        output = grid.copy()
+        rows, cols = grid.shape
+
+        # print("SPANNING THE DOTTED")
+        # print(grid)
+        # Horizontal Dotted Spans
+        for r in range(rows):
+            nz_cols = np.flatnonzero(grid[r] != 0)
+            if nz_cols.size < 2:
+                continue
+            
+            # Bridge every pair of non-zero points in the row
+            for i in range(len(nz_cols) - 1):
+                left = nz_cols[i] + 2
+                right = nz_cols[i+1] - 2
+                
+                while left < right:
+                    output[r, left] = bridge_color
+                    output[r, right] = bridge_color
+                    right-=step
+                    left+=step
+
+        # print("hi")
+
+        # Vertical Dotted Spans
+        for c in range(cols):
+            nz_rows = np.flatnonzero(grid[:, c] != 0)
+            if nz_rows.size < 2:
+                continue
+                
+            for i in range(len(nz_rows) - 1):
+                top = nz_rows[i] + 2
+                bottom = nz_rows[i+1] - 2
+                
+                while top < bottom:
+                    output[top, c] = bridge_color
+                    output[bottom, c] = bridge_color
+                    top+=step
+                    bottom-=step
+
+        # print("hi2")
+        # print(output)
+        # print("DONE SPANNING THE DOTTED")
+        return output
 
     def _remove_single_pixel_objects(self, grid: np.ndarray) -> np.ndarray:
         # Reuse the object extractor and drop all objects whose area is 1.
@@ -1339,33 +1404,48 @@ class GraphExecutor:
 
         return output
 
-    def _enlarge_single_pixel_objects(self, grid: np.ndarray) -> np.ndarray:
-        # Enlarge all single-pixel objects to 3x3 squares centered on the pixel, preserving color
+    def _enlarge_single_pixel_objects(self, grid: np.ndarray, target_colors: list[int] = []) -> np.ndarray:
+        """
+        Enlarge single-pixel objects to 3x3 squares.
+        The original center pixel retains its color.
+        The surrounding 8 pixels take on target_color (or original color if None).
+        """
         if grid.size == 0:
             return grid.copy()
         
-        # print("-----")
-        # print(grid)
-
         extractor = ObjectExtractor(connectivity="4")
         objects = extractor.extract(grid)
         output = grid.copy()
         height, width = grid.shape
 
+        # print("----")
+        # print(grid)
         for obj in objects:
-            if getattr(obj, 'is_grid_boundary', False):
+            # print(obj)
+            if getattr(obj, 'is_grid_boundary', False) or len(obj.pixels) != 1 or obj.color == 5:
                 continue
-            if len(obj.pixels) == 1:
-                (r, c) = next(iter(obj.pixels))
-                color = obj.color
-                for dr in [-1, 0, 1]:
-                    for dc in [-1, 0, 1]:
-                        nr, nc = r + dr, c + dc
-                        if 0 <= nr < height and 0 <= nc < width:
-                            output[nr, nc] = color
+            
+            (r, c) = next(iter(obj.pixels))
+            original_color = obj.color
+
+            fill_color = original_color
+            for target_color in target_colors:
+                if target_color != original_color and target_color != 5:
+                    fill_color = target_color
+            # print(original_color, fill_color, target_colors)
+            
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    # Skip the center pixel so its original color is preserved in 'output'
+                    if dr == 0 and dc == 0:
+                        continue
+                        
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < height and 0 <= nc < width:
+                        output[nr, nc] = fill_color
 
         # print(output)
-        # print("~~~~~~")
+        # print("~~~~")
         return output
 
     def _draw_diagonals_from_single_pixels(self, grid: np.ndarray) -> np.ndarray:
