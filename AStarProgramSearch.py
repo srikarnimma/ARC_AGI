@@ -639,6 +639,24 @@ class AStarProgramSearch:
             )
         )
 
+        # Staircase
+        actions.append(
+            Operation(
+                type=OperationType.STAIRCASE,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
+        # Sort color
+        actions.append(
+            Operation(
+                type=OperationType.SORT_COLOR_COUNTS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

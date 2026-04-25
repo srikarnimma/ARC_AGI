@@ -1,39 +1,30 @@
 
-=== Running Milestone C (16 problem(s)) ===
-[ArcAgent] Selected A* ops: SPAN_MATCHING_COLOR_ENDPOINTS(ALL; include_cols=False)
-[1/16] 22eb0ac0 | correct=True | time=0.060s
-[ArcAgent] Selected A* ops: <none>
-[2/16] 25d487eb | correct=False | time=5.946s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=XOR, output_color=3, split_direction=ROW)
-[3/16] 3428a4f5 | correct=True | time=0.048s
-[ArcAgent] Selected A* ops: CROP_NONZERO_BBOX(ALL) -> CROP_RECOLOR_BY_CORNER_MARKERS(ALL)
-[4/16] 3de23699 | correct=True | time=0.866s
-[ArcAgent] Selected A* ops: <none>
-[5/16] 5c0a986e | correct=False | time=3.056s
-[ArcAgent] Selected A* ops: <none>
-[6/16] 62c24649 | correct=False | time=10.343s
-[ArcAgent] Selected A* ops: ROTATE_GRID(ALL; angle=270) -> FLIP_GRID(ALL; direction=horizontal)
-[7/16] 74dd1130 | correct=True | time=0.286s
-[ArcAgent] Selected A* ops: FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=3)
-[8/16] 7b6016b9 | correct=True | time=0.062s
-[ArcAgent] Selected A* ops: ROTATE_GRID(ALL; angle=180) -> MIRROR_HORIZONTAL(ALL)
-[9/16] 9af7a82c | correct=False | time=9.562s
-[ArcAgent] Selected A* ops: RECOLOR(BY_SHAPE; color=1, new_color=8, shape=cycle)
-[10/16] b2862040 | correct=True | time=0.024s
-[ArcAgent] Selected A* ops: MIRROR_HORIZONTAL(ALL)
-[11/16] bbc9ae5d | correct=False | time=11.554s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=ADD, output_color=1, split_direction=COL)
-[12/16] cf98881b | correct=True | time=0.143s
-[ArcAgent] Selected A* ops: MOVE_TOWARD_OTHER(ALL; index=0)
-[13/16] dc433765 | correct=True | time=3.560s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=1, split_direction=ROW)
-[14/16] e98196ab | correct=True | time=0.143s
-[ArcAgent] Selected A* ops: SPAN_DOTTED(ALL) -> ENLARGE_SINGLE_PIXEL_OBJECTS(ALL; target_color=in)
-[15/16] f35d900a | correct=True | time=12.242s
-[ArcAgent] Selected A* ops: REFLECT_AGAINST_BRACKETS(ALL)
-[16/16] f8a8fe49 | correct=True | time=0.029s
-Milestone C summary: 11/16 (68.8%) in 57.93s | results: Milestone_C_Results.csv
+=== Running Milestone C (1 problem(s)) ===
+------
+[ArcAgent] Problem: 9af7a82c
+[ArcAgent] Test input grid:
+[[8 8 2 2]
+ [1 8 8 2]
+ [1 3 3 4]
+ [1 1 1 1]]
+[ArcAgent] Proposed output (A* | loss=0.0000 | score=1.0000):
+[[1 8 2 3 4]
+ [1 8 2 3 0]
+ [1 8 2 0 0]
+ [1 8 0 0 0]
+ [1 0 0 0 0]
+ [1 0 0 0 0]]
+[ArcAgent] Selected A* ops: SORT_COLOR_COUNTS(ALL)
+[ArcAgent] Final prediction 1 (initial=1.0000, similarity=0.5333):
+[[1 8 2 3 4]
+ [1 8 2 3 0]
+ [1 8 2 0 0]
+ [1 8 0 0 0]
+ [1 0 0 0 0]
+ [1 0 0 0 0]]
+[1/1] 9af7a82c | correct=True | time=0.121s
+Milestone C summary: 1/1 (100.0%) in 0.12s | results: Milestone_C_Results.csv
 
 === Final Summary ===
-Milestone C: 11/16 (68.8%) in 57.93s
-Overall: 11/16 (68.8%)
+Milestone C: 1/1 (100.0%) in 0.12s
+Overall: 1/1 (100.0%)

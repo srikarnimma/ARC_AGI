@@ -4,7 +4,7 @@
 import numpy as np
 from copy import deepcopy
 from typing import Optional, Set, Tuple
-from collections import deque
+from collections import deque, Counter
 from GraphSemanticNetwork import SemanticGraph
 from GraphDSL import TransformProgram, OperationType, Selector
 from GraphObjectExtractor import Object, ObjectExtractor
@@ -32,6 +32,8 @@ class GraphExecutor:
             OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
             OperationType.TETRIS,
             OperationType.REFLECT_AGAINST_BRACKETS,
+            OperationType.STAIRCASE,
+            OperationType.SORT_COLOR_COUNTS,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -375,6 +377,20 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._tetris(grid_state)
+
+            elif operation.type == OperationType.STAIRCASE:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._staircase(grid_state)
+
+            elif operation.type == OperationType.SORT_COLOR_COUNTS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._sort_color_counts(grid_state)
 
             elif operation.type == OperationType.MOVE_TOWARD_OTHER:
                 if len(objects_map) != 2:
@@ -1634,3 +1650,56 @@ class GraphExecutor:
         # print("~~~")
         return output
 
+    def _staircase(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        # Determine input properties
+        # Input is always a single row (1, W)
+        in_height, width = grid.shape
+        out_height = width // 2
+        
+        # Identify the initial colored segment
+        # Extract the first non-zero color and its starting length
+        nz_indices = np.flatnonzero(grid[0] != 0)
+        if nz_indices.size == 0:
+            return grid.copy()
+        
+        color = grid[0, nz_indices[0]]
+        initial_length = nz_indices.size
+        
+        # Initialize the taller output grid
+        output = np.zeros((out_height, width), dtype=int)
+        
+        # Build the staircase row by row
+        for r in range(out_height):
+            # Current row length: initial + row index
+            current_length = initial_length + r
+            
+            # Fill the row up to the calculated length, ensuring we don't exceed grid width
+            fill_limit = min(current_length, width)
+            output[r, :fill_limit] = color
+            
+        return output
+    
+    def _sort_color_counts(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        counts = Counter(grid.flatten())
+        if 0 in counts:
+            del counts[0]
+            
+        if not counts:
+            return np.zeros((1, 1), dtype=int)
+        sorted_data = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+        
+        # Create output
+        out_width = len(sorted_data)
+        out_height = sorted_data[0][1]
+        output = np.zeros((out_height, out_width), dtype=int)
+        
+        for col_idx, (color, count) in enumerate(sorted_data):
+            output[:count, col_idx] = color
+            
+        return output

@@ -39,6 +39,8 @@ class OperationType(Enum):
     TETRIS = "tetris"
     REFLECT_AGAINST_BRACKETS = "reflect_against_brackets"
     MOVE_TOWARD_OTHER = "move_toward_other"
+    STAIRCASE = "staircase"
+    SORT_COLOR_COUNTS = "sort_color_counts"
 
 
 class Selector(Enum):
