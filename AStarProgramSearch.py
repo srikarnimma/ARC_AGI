@@ -598,6 +598,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Reflect against brackets
+        actions.append(
+            Operation(
+                type=OperationType.REFLECT_AGAINST_BRACKETS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

@@ -31,6 +31,7 @@ class GraphExecutor:
             OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
             OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
             OperationType.TETRIS,
+            OperationType.REFLECT_AGAINST_BRACKETS,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -295,6 +296,13 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._recolor_main_by_external_pairs(grid_state)
+
+            elif operation.type == OperationType.REFLECT_AGAINST_BRACKETS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._reflect_against_brackets(grid_state)
 
             elif operation.type == OperationType.CONTEXTUAL_SYMMETRY_FILL:
                 if current_grid is not None:
@@ -1063,6 +1071,13 @@ class GraphExecutor:
         max_r, max_c = main_positions.max(axis=0)
         return output[min_r:max_r + 1, min_c:max_c + 1]
 
+    def _reflect_about_axis(self, value: int, axis_coord: float) -> int:
+        """
+        Reflects a single coordinate value across a given axis.
+        Formula: reflected_value = 2 * axis - original_value
+        """
+        return int(round(2 * axis_coord - value))
+
     def _reflect_pixels_about_center(
         self,
         pixels: Set[Tuple[int, int]],
@@ -1072,11 +1087,67 @@ class GraphExecutor:
         reflect_cols: bool,
     ) -> Set[Tuple[int, int]]:
         reflected: Set[Tuple[int, int]] = set()
+        
         for r, c in pixels:
-            new_r = int(round(2 * center_r - r)) if reflect_rows else r
-            new_c = int(round(2 * center_c - c)) if reflect_cols else c
+            # Call the axis reflection function for each dimension if requested
+            new_r = self._reflect_about_axis(r, center_r) if reflect_rows else r
+            new_c = self._reflect_about_axis(c, center_c) if reflect_cols else c
+            
             reflected.add((new_r, new_c))
+            
         return reflected
+    
+    #TODO: see if generalizes for color
+    def _reflect_against_brackets(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objects = extractor.extract(grid)
+        height, width = grid.shape
+        anchors = [obj for obj in all_objects if not obj.is_grid_boundary and obj.color != 5 and obj.color != 0]
+        particles = [obj for obj in all_objects if obj.color == 5]
+        
+        # init output
+        output = np.zeros_like(grid)
+        for a in anchors:
+            for r, c in a.pixels:
+                output[r, c] = a.color
+
+        # Reflect
+        for p in particles:
+            # Find the nearest anchor to this specific particle
+            p_centroid_r = np.mean([r for r, c in p.pixels])
+            p_centroid_c = np.mean([c for r, c in p.pixels])
+            
+            nearest_anchor = min(anchors, key=lambda a: min(
+                np.sqrt((p_centroid_r - ar)**2 + (p_centroid_c - ac)**2) 
+                for ar, ac in a.pixels
+            ))
+            min_r, min_c, max_r, max_c = nearest_anchor.bbox
+            is_horizontal = (max_c - min_c) > (max_r - min_r)
+            
+            reflect_rows = False
+            reflect_cols = False
+            axis_coord = 0.0
+
+            if is_horizontal:
+                reflect_rows = True
+                axis_coord = min_r if p_centroid_r > min_r else max_r
+            else:
+                reflect_cols = True
+                axis_coord = min_c if p_centroid_c > min_c else max_c
+
+            # Apply
+            for r, c in p.pixels:
+                new_r = self._reflect_about_axis(r, axis_coord) if reflect_rows else r
+                new_c = self._reflect_about_axis(c, axis_coord) if reflect_cols else c
+                
+                # Ensure we stay within grid bounds
+                if 0 <= new_r < height and 0 <= new_c < width:
+                    output[new_r, new_c] = p.color
+
+        return output
 
     def _contextual_symmetry_fill(self, grid: np.ndarray) -> np.ndarray:
         # For each hollow container, mirror enclosed objects across the

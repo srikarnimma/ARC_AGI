@@ -36,6 +36,7 @@ class OperationType(Enum):
     ENLARGE_SINGLE_PIXEL_OBJECTS = "enlarge_single_pixel_objects"
     DRAW_DIAGONALS_FROM_SINGLE_PIXELS = "draw_diagonals_from_single_pixels"
     TETRIS = "tetris"
+    REFLECT_AGAINST_BRACKETS = "reflect_against_brackets"
 
 
 class Selector(Enum):
