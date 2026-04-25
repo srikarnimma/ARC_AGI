@@ -910,8 +910,6 @@ class GraphExecutor:
 
         return output
     
-
-    # TODO: FIX THIS JOHNSON
     def _span_dotted(self, grid: np.ndarray, bridge_color: int = 5, step: int = 2) -> np.ndarray:
         # Connects non-zero endpoints in rows/cols with a dotted line of bridge_color.
         if grid.size == 0:
@@ -985,11 +983,22 @@ class GraphExecutor:
         return output
 
     def _logical_and_split(self, grid: np.ndarray, separator_color: int | None, output_color: int, logic_op: str = 'AND', split_direction: str = 'AUTO') -> np.ndarray:
-        # Split grid on separator line and apply logical operation to the two halves
-        # split_direction: 'AUTO' (detect both), 'ROW' (horizontal split only), 'COL' (vertical split only)
+        # Split grid on separator line(s) and apply logical operation sequentially
+        # split_direction: 'AUTO' (detect both), 'ROW' (horizontal), 'COL' (vertical)
         height, width = grid.shape
 
+        # print("----")
+        # print(grid)
+
         def _apply_logic(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+            # Minimal change for the ADD operation: use first grid's value, if zero use second
+            if logic_op == 'ADD':
+                output = lhs.copy()
+                mask = (lhs == 0) & (rhs != 0)
+                output[mask] = rhs[mask]
+                return output
+            
+            # Original FIT_ADD logic
             if logic_op == 'FIT_ADD':
                 conflict = (lhs != 0) & (rhs != 0)
                 if np.any(conflict):
@@ -998,6 +1007,7 @@ class GraphExecutor:
                 output[rhs != 0] = rhs[rhs != 0]
                 return output
 
+            # Standard boolean logic ops
             output = np.zeros_like(lhs)
             for r in range(lhs.shape[0]):
                 for c in range(lhs.shape[1]):
@@ -1025,56 +1035,81 @@ class GraphExecutor:
         split_rows = []
         split_cols = []
         
+        # 1. Detection Phase
         if separator_color is not None:
-            # Search for rows/cols matching specific separator color
             if split_direction in ['AUTO', 'ROW']:
                 split_rows = [r for r in range(height) if np.all(grid[r, :] == separator_color)]
             if split_direction in ['AUTO', 'COL']:
                 split_cols = [c for c in range(width) if np.all(grid[:, c] == separator_color)]
         else:
-            # Auto-detect: find rows/cols where all pixels are the same (any color)
+            # Internal helper to find indices that divide the grid into N+1 equal panels
+            def _get_valid_splits(potential_info, total_dim):
+                if not potential_info: return []
+                color_groups = {}
+                for idx, color in potential_info:
+                    color_groups.setdefault(color, []).append(idx)
+                for color, indices in color_groups.items():
+                    indices.sort()
+                    sizes = []
+                    prev = -1
+                    for idx in indices:
+                        sizes.append(idx - prev - 1)
+                        prev = idx
+                    sizes.append(total_dim - prev - 1)
+                    if len(set(sizes)) == 1 and len(indices) > 0:
+                        return indices
+                return []
+
             if split_direction in ['AUTO', 'ROW']:
-                for r in range(height):
-                    if np.all(grid[r, :] == grid[r, 0]):
-                        split_rows.append(r)
+                potential_row_info = [(r, grid[r, 0]) for r in range(height) if np.all(grid[r, :] == grid[r, 0]) and grid[r, 0] != 0]
+                split_rows = _get_valid_splits(potential_row_info, height)
+
             if split_direction in ['AUTO', 'COL']:
-                for c in range(width):
-                    if np.all(grid[:, c] == grid[0, c]):
-                        split_cols.append(c)
+                potential_col_info = [(c, grid[0, c]) for c in range(width) if np.all(grid[:, c] == grid[0, c]) and grid[0, c] != 0]
+                split_cols = _get_valid_splits(potential_col_info, width)
 
-        # For ROW split, find separator that creates equal halves.
-        # If none works and no specific separator color is required, fallback to
-        # splitting the grid into two contiguous equal halves (no separator row).
+        # print(split_direction, split_rows, split_cols)
+
+        # 2. Sequential Processing Phase
+        # Process ROW splits
         if split_direction in ['AUTO', 'ROW'] and split_rows:
-            for split in split_rows:
-                top = grid[:split, :]
-                bottom = grid[split + 1:, :]
-                if top.shape == bottom.shape:
-                    return _apply_logic(top, bottom)
+            panels = []
+            start = 0
+            for r in split_rows:
+                panels.append(grid[start:r, :])
+                start = r + 1
+            panels.append(grid[start:, :])
+            
+            if all(p.shape == panels[0].shape for p in panels) and len(panels) >= 2:
+                res = panels[0]
+                for i in range(1, len(panels)):
+                    res = _apply_logic(res, panels[i])
+                # print(res)
+                # print("~~row~~")
+                return res
 
-        if split_direction in ['AUTO', 'ROW'] and separator_color is None and height % 2 == 0:
-            half = height // 2
-            top = grid[:half, :]
-            bottom = grid[half:, :]
-            if top.shape == bottom.shape:
-                return _apply_logic(top, bottom)
-
-        # For COL split, find separator that creates equal halves.
-        # If none works and no specific separator color is required, fallback to
-        # splitting the grid into two contiguous equal halves (no separator col).
+        # Process COL splits
         if split_direction in ['AUTO', 'COL'] and split_cols:
-            for split in split_cols:
-                left = grid[:, :split]
-                right = grid[:, split + 1:]
-                if left.shape == right.shape:
-                    return _apply_logic(left, right)
+            panels = []
+            start = 0
+            for c in split_cols:
+                panels.append(grid[:, start:c])
+                start = c + 1
+            panels.append(grid[:, start:])
+            
+            if all(p.shape == panels[0].shape for p in panels) and len(panels) >= 2:
+                res = panels[0]
+                for i in range(1, len(panels)):
+                    res = _apply_logic(res, panels[i])
+                # print(res)
+                # print("~~col~~")
+                return res
 
-        if split_direction in ['AUTO', 'COL'] and separator_color is None and width % 2 == 0:
-            half = width // 2
-            left = grid[:, :half]
-            right = grid[:, half:]
-            if left.shape == right.shape:
-                return _apply_logic(left, right)
+        # Fallback to contiguous 50/50 split if no separators found
+        if split_direction == 'ROW' and height % 2 == 0:
+            return _apply_logic(grid[:height//2, :], grid[height//2:, :])
+        if split_direction == 'COL' and width % 2 == 0:
+            return _apply_logic(grid[:, :width//2], grid[:, width//2:])
 
         return grid.copy()
 

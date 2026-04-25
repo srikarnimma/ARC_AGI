@@ -519,7 +519,7 @@ class AStarProgramSearch:
 
         # Logical ops between subgrids (auto-detect the separator)
         output_colors = [c for c in palette if c != 0]
-        logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR', 'FIT_ADD']
+        logic_ops = ['AND', 'OR', 'XOR', 'XNOR', 'NAND', 'NOR', 'FIT_ADD', 'ADD']
         split_directions = ['ROW', 'COL']
         for logic_op in logic_ops:
             for out_color in output_colors or [1]:
