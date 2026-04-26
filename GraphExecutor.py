@@ -439,6 +439,13 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 current_grid = self._laser_beam(grid_state)
 
+            elif operation.type == OperationType.OUTLINE_ENCLOSED_SHAPE:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._outline_enclosed_shape(grid_state)
+
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -1878,4 +1885,114 @@ class GraphExecutor:
 
         # print(output)
         # print("~~~~")
+        return output
+    
+    def _outline_enclosed_shape(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        # print("-------")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+
+        # interior_color = available_colors[0]
+        # exterior_color = available_colors[1]
+        interior_color = 3
+        exterior_color = 2
+        output = grid.copy()
+
+        height, width = grid.shape
+
+        for obj in all_objs:
+            # print(obj, obj.is_grid_boundary, obj.is_closed_shape)
+
+            if obj.is_grid_boundary or not getattr(obj, "is_closed_shape", False):
+                continue
+
+            # print(obj)
+
+            min_r, min_c, max_r, max_c = obj.bbox
+            obj_pixels = set(obj.pixels)
+
+            queue = deque()
+
+            # --- Step 1: seed ONLY object-adjacent exterior candidates ---
+            for (r, c) in obj_pixels:
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        if dr == 0 and dc == 0:
+                            continue
+
+                        nr, nc = r + dr, c + dc
+
+                        if not (0 <= nr < height and 0 <= nc < width):
+                            continue
+
+                        if output[nr, nc] != 0:
+                            continue
+
+                        # must be on or outside bbox
+                        if nr <= min_r or nr >= max_r or nc <= min_c or nc >= max_c:
+                            output[nr, nc] = exterior_color
+                            queue.append((nr, nc))
+
+            # --- Step 2: propagate ONLY along cells that still touch object ---
+            while queue:
+                r, c = queue.popleft()
+                # print("boomboom", r, c)
+
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        if dr == 0 and dc == 0:
+                            continue
+
+                        nr, nc = r + dr, c + dc
+
+                        # print(nr, nc, height, width)
+
+                        if not (0 <= nr < height and 0 <= nc < width):
+                            continue
+
+                        if output[nr, nc] != 0:
+                            continue
+
+                        # must touch object
+                        touches_object = False
+                        for tr in [-1, 0, 1]:
+                            for tc in [-1, 0, 1]:
+                                # print("check here", (nr + tr, nc + tc), list(obj_pixels), (nr + tr, nc + tc) in list(obj_pixels))
+                                if tr == 0 and tc == 0:
+                                    continue
+                                if (nr + tr, nc + tc) in obj_pixels:
+                                    touches_object = True
+                                    break
+                            if touches_object:
+                                break
+
+                        if not touches_object:
+                            continue
+
+                        output[nr, nc] = exterior_color
+                        queue.append((nr, nc))
+                        # print("added johns", nr, nc)
+                
+                # print(output)
+
+            # --- Step 3: interior
+            for (r, c) in obj_pixels:
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        if dr == 0 and dc == 0: 
+                            continue
+                        
+                        nr, nc = r + dr, c + dc
+                        
+                        # Ensure neighbor is within grid and not already colored/part of object
+                        if 0 <= nr < height and 0 <= nc < width and (output[nr, nc] == 0):
+                            output[nr, nc] = interior_color
+
+        # print(output)
+        # print("~~~~~~")
         return output

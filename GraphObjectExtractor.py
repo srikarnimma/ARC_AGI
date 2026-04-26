@@ -122,7 +122,7 @@ class ObjectExtractor:
         )
         
         # Detect features
-        obj.is_closed_shape = self._is_closed_shape(pixels)
+        obj.is_closed_shape = self._is_closed_shape(pixels, bbox)
         obj.is_cyclic = self._has_cycle(pixels)
         obj.is_hollow = self._is_hollow(pixels, bbox)
         obj.num_holes = self._count_holes(pixels, bbox)
@@ -150,15 +150,43 @@ class ObjectExtractor:
                     perimeter += 1
         return perimeter
     
-    def _is_closed_shape(self, pixels: Set[Tuple[int, int]]) -> bool:
-        # Check for closed contour using perimeter/area ratio
-        if len(pixels) < 4:
+    def _is_closed_shape(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
+        min_r, min_c, max_r, max_c = bbox
+        h, w = max_r - min_r + 1, max_c - min_c + 1
+        
+        if len(pixels) < 4 or h < 3 or w < 3:
             return False
-        # Rough heuristic: closed shapes have perimeter roughly sqrt(area)
-        perimeter = self._compute_perimeter(pixels)
-        area = len(pixels)
-        # Closed shapes typically have P^2 ~ 4*pi*A, so P^2/A ~ 12-15 for circle
-        return (perimeter * perimeter) / area > 10 and (perimeter * perimeter) / area < 25
+            
+        for r in range(min_r + 1, max_r):
+            for c in range(min_c + 1, max_c):
+                if (r, c) not in pixels:
+                    # Check if this specific hole is completely sealed
+                    if self._is_actually_enclosed(r, c, pixels, bbox):
+                        return True
+        return False
+
+    def _is_actually_enclosed(self, start_r, start_c, obj_pixels, bbox):
+        min_r, min_c, max_r, max_c = bbox
+        
+        queue = deque([(start_r, start_c)])
+        visited = {(start_r, start_c)}
+        
+        while queue:
+            r, c = queue.popleft()
+            
+            # If we escape bbox, the hole leaks
+            if r < min_r or r > max_r or c < min_c or c > max_c:
+                return False
+            
+            # 4-connectivity flood fill
+            for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
+                nr, nc = r + dr, c + dc
+                
+                if (nr, nc) not in obj_pixels and (nr, nc) not in visited:
+                    visited.add((nr, nc))
+                    queue.append((nr, nc))
+        
+        return True
 
     def _has_cycle(self, pixels: Set[Tuple[int, int]]) -> bool:
         # Graph-theoretic cycle test on 4-neighbor adjacency.

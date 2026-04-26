@@ -13,23 +13,45 @@ from ArcAgent import ArcAgent
 
 def run_training_data(agent: ArcAgent, arc_problems: list[ArcProblem]) -> dict[ArcProblem, tuple[bool, list]]:
     """
-    Run each training problem with the test output included so the agent can
-    test if they are getting the correct response.
+    Run each training problem and provide detailed diffs for incorrect answers.
     """
     train_ans_dict: dict[ArcProblem, tuple[bool, list]] = dict()
     total_problems = len(arc_problems)
+    
     for i, trn_problem in enumerate(arc_problems, start=1):
         start_time = time.perf_counter()
         preds: list[np.ndarray] = agent.make_predictions(trn_problem)
         correct = False
+        answer = trn_problem.test_set().get_output_data().data()
 
-        if len(preds) <= 3:
-            for prediction in preds:
-                answer = trn_problem.test_set().get_output_data().data()
-                correct = np.array_equal(answer, prediction)
-                if correct: break
+        # Check if any prediction is correct
+        if len(preds) > 0:
+            for prediction in preds[:3]:  # ARC allows up to 3 predictions
+                if np.array_equal(answer, prediction):
+                    correct = True
+                    break
+        
+        # If incorrect after checking all predictions, print the first prediction's diff
+        if not correct and len(preds) > 0:
+            first_pred = preds[0]
+            print(f"\n--- Incorrect Solution for {trn_problem.problem_name()} ---")
+            print("Expected Output:")
+            print(answer)
+            print("\nYour Output (Prediction 1):")
+            print(first_pred)
+            
+            # Find indices where cells differ
+            if answer.shape == first_pred.shape:
+                diff_indices = np.where(answer != first_pred)
+                # Zip the row and col arrays into a list of coordinate tuples
+                coords = list(zip(diff_indices[0], diff_indices[1]))
+                print(f"\nIncorrect Cell Indices (row, col):")
+                print(coords)
+            else:
+                print(f"\nShape Mismatch: Expected {answer.shape}, got {first_pred.shape}")
+            print("---------------------------------------------------\n")
 
-        # # store the problem_set and whether it was correctly solved
+        # store the problem_set and whether it was correctly solved
         train_ans_dict[trn_problem] = (correct, preds)
 
         elapsed_seconds = time.perf_counter() - start_time

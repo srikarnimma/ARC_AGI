@@ -700,6 +700,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Outline enclosed
+        actions.append(
+            Operation(
+                type=OperationType.OUTLINE_ENCLOSED_SHAPE,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:
