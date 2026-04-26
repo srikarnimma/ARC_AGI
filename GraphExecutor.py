@@ -430,6 +430,15 @@ class GraphExecutor:
                 init_flip_v = bool(operation.params.get('init_flip_v', False))
                 current_grid = self._fractal_tiling(grid_state, rep_size, init_flip_h, init_flip_v)
 
+            elif operation.type == OperationType.LASER_BEAM:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._laser_beam(grid_state)
+
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
                                     OperationType.XNOR, OperationType.NAND, OperationType.NOR]:
@@ -1817,4 +1826,56 @@ class GraphExecutor:
             r1 += 1
             c1 += 1
 
+        return output
+    
+    def _laser_beam(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("-----")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+        objects = [obj for obj in all_objs if not obj.is_grid_boundary]
+
+        triangle_obj = next((obj for obj in objects if getattr(obj, 'is_triangle', False)), None)
+        single_pixel_obj = next((obj for obj in objects if len(obj.pixels) == 1), None)
+
+        # for obj in objects:
+        #     print(obj)
+        # print(triangle_obj)
+        # print(single_pixel_obj)
+
+        if not triangle_obj or not single_pixel_obj:
+            return grid.copy()
+
+        output = grid.copy()
+        height, width = grid.shape
+        beam_color = single_pixel_obj.color
+        orientation = getattr(triangle_obj, 'orientation', None)
+        min_r, min_c, max_r, max_c = triangle_obj.bbox
+
+        if orientation == 'right':
+            curr_r, curr_c = (min_r + max_r) // 2, max_c + 1
+            dr, dc = 0, 1
+        elif orientation == 'left':
+            curr_r, curr_c = (min_r + max_r) // 2, min_c - 1
+            dr, dc = 0, -1
+        elif orientation == 'down':
+            curr_r, curr_c = max_r + 1, (min_c + max_c) // 2
+            dr, dc = 1, 0
+        elif orientation == 'up':
+            curr_r, curr_c = min_r - 1, (min_c + max_c) // 2
+            dr, dc = -1, 0
+        else:
+            return grid.copy()
+
+        while 0 <= curr_r < height and 0 <= curr_c < width:
+            output[curr_r, curr_c] = beam_color
+            curr_r += dr
+            curr_c += dc
+
+        # print(output)
+        # print("~~~~")
         return output

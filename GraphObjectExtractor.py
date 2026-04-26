@@ -34,7 +34,7 @@ class Object:
         self.perimeter = perimeter
     
     def __str__(self):
-        return f"<Object color={self.color}, pixels={self.pixels}>"
+        return f"<Object color={self.color}, pixels={self.pixels}, bbox={self.bbox}>"
 
 # Main extractor class
 # Reads a grid and outputs detected objects
@@ -316,30 +316,33 @@ class ObjectExtractor:
         return True
     
     def _is_triangle(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
-        # Detect triangle: one point + wide base
         min_r, min_c, max_r, max_c = bbox
         h, w = max_r - min_r + 1, max_c - min_c + 1
         area = len(pixels)
         
-        # Triangle-like: compact and roughly triangular area
         bbox_area = h * w
-        if area < bbox_area * 0.3 or area > bbox_area * 0.7:
+        if not (0.3 <= area / bbox_area <= 0.75):
             return False
+
+        # Check every row within the bbox
+        single_pixel_rows = 0
+        for r in range(min_r, max_r + 1):
+            if sum(1 for pr, pc in pixels if pr == r) == 1:
+                single_pixel_rows += 1
+                
+        # Check every column within the bbox
+        single_pixel_cols = 0
+        for c in range(min_c, max_c + 1):
+            if sum(1 for pr, pc in pixels if pc == c) == 1:
+                single_pixel_cols += 1
+
+        # Up/Down triangles have 1 narrow row (the tip) and 2 narrow columns (the base corners)
+        pointing_vertical = (single_pixel_rows == 1 and single_pixel_cols == 2)
         
-        # Has significant perimeter relative to area (not too circular)
-        perimeter = self._compute_perimeter(pixels)
-        if (perimeter * perimeter) / area < 10 or (perimeter * perimeter) / area > 20:
-            return False
-        
-        # Check for point at top/bottom
-        top_row_pixels = sum(1 for r, c in pixels if r == min_r)
-        bot_row_pixels = sum(1 for r, c in pixels if r == max_r)
-        mid_row_pixels = sum(1 for r, c in pixels if min_r < r < max_r)
-        
-        if (top_row_pixels == 1 or bot_row_pixels == 1) and mid_row_pixels > top_row_pixels:
-            return True
-        
-        return False
+        # Left/Right triangles have 1 narrow column (the tip) and 2 narrow rows (the base corners)
+        pointing_horizontal = (single_pixel_cols == 1 and single_pixel_rows == 2)
+
+        return pointing_vertical or pointing_horizontal
     
     def _is_grid(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> bool:
         # Detect regular grid pattern
@@ -377,23 +380,28 @@ class ObjectExtractor:
         return bool(row_variance < 0.3 and col_variance < 0.3)
     
     def _detect_orientation(self, pixels: Set[Tuple[int, int]], bbox: Tuple[int, int, int, int]) -> str:
-        # Detect orientation (horizontal/vertical/diagonal)
         min_r, min_c, max_r, max_c = bbox
-        h = max_r - min_r + 1
-        w = max_c - min_c + 1
         
-        # Check for main diagonal
-        diag_count = sum(1 for r, c in pixels if (r - min_r) == (c - min_c))
-        anti_diag_count = sum(1 for r, c in pixels if (r - min_r) == (max_c - c))
+        # Count pixels along each edge of the bounding box
+        top_count = sum(1 for r, c in pixels if r == min_r)
+        bottom_count = sum(1 for r, c in pixels if r == max_r)
+        left_count = sum(1 for r, c in pixels if c == min_c)
+        right_count = sum(1 for r, c in pixels if c == max_c)
         
-        area = len(pixels)
+        counts = {
+            "up": bottom_count,    # Base at bottom -> points up
+            "down": top_count,     # Base at top -> points down
+            "left": right_count,   # Base at right -> points left
+            "right": left_count    # Base at left -> points right
+        }
         
-        if max(diag_count, anti_diag_count) > area * 0.6:
-            return "diagonal"
+        # Manually find the key with the highest value
+        best_direction = "unknown"
+        max_val = -1
         
-        if h > w * 1.5:
-            return "vertical"
-        elif w > h * 1.5:
-            return "horizontal"
-        else:
-            return "unknown"
+        for direction, val in counts.items():
+            if val > max_val:
+                max_val = val
+                best_direction = direction
+                
+        return best_direction

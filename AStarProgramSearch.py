@@ -673,7 +673,7 @@ class AStarProgramSearch:
             )
         )
 
-        # Sort color
+        # Fractal Tiling
         for init_flip_h in [False, True]:
             for init_flip_v in [False, True]:
                 actions.append(
@@ -690,6 +690,15 @@ class AStarProgramSearch:
                         params={"rep_size": 3, "init_flip_h": init_flip_h, "init_flip_v": init_flip_v},
                     )
                 )
+
+        # Laser beam
+        actions.append(
+            Operation(
+                type=OperationType.LASER_BEAM,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
 
         return actions
 
