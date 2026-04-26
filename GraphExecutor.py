@@ -405,6 +405,18 @@ class GraphExecutor:
                 index = int(operation.params.get('index', 0))
                 current_grid = self._move_toward_other(grid_state, index)
 
+            elif operation.type == OperationType.DRAW_DIAGONAL_FROM_OBJECT:
+                if len(objects_map) != 2:
+                    continue
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+                index = int(operation.params.get('index', 0))
+                current_grid = self._draw_diagonal_from_object(grid_state, index)
+
             elif operation.type == OperationType.FRACTAL_TILING:
                 if current_grid is not None:
                     grid_state = current_grid
@@ -1768,4 +1780,41 @@ class GraphExecutor:
 
         # print(output)
         # print("~~~~~~")
+        return output
+    
+    def _draw_diagonal_from_object(self, grid: np.ndarray, obj_idx: int) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+        
+        objects = [obj for obj in all_objs if not obj.is_grid_boundary]
+        objects.sort(key=lambda x: x.color)
+
+        if len(objects) < 2:
+            return grid.copy()
+
+        output = grid.copy()
+        height, width = grid.shape
+
+        if obj_idx == 0:
+            tl_obj = objects[0]
+            br_obj = objects[1]
+        else:
+            tl_obj = objects[1]
+            br_obj = objects[0]
+
+        r0, c0 = tl_obj.bbox[0] - 1, tl_obj.bbox[1] - 1
+        while 0 <= r0 < height and 0 <= c0 < width:
+            output[r0, c0] = tl_obj.color
+            r0 -= 1
+            c0 -= 1
+
+        r1, c1 = br_obj.bbox[2] + 1, br_obj.bbox[3] + 1
+        while 0 <= r1 < height and 0 <= c1 < width:
+            output[r1, c1] = br_obj.color
+            r1 += 1
+            c1 += 1
+
         return output

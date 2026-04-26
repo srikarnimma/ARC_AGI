@@ -639,6 +639,22 @@ class AStarProgramSearch:
             )
         )
 
+        # Draw diagonal
+        actions.append(
+            Operation(
+                type=OperationType.DRAW_DIAGONAL_FROM_OBJECT,
+                selector=Selector.ALL,
+                params={"index": "0"},
+            )
+        )
+        actions.append(
+            Operation(
+                type=OperationType.DRAW_DIAGONAL_FROM_OBJECT,
+                selector=Selector.ALL,
+                params={"index": "1"},
+            )
+        )
+
         # Staircase
         actions.append(
             Operation(

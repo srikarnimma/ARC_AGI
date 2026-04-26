@@ -42,6 +42,7 @@ class OperationType(Enum):
     STAIRCASE = "staircase"
     SORT_COLOR_COUNTS = "sort_color_counts"
     FRACTAL_TILING = "fractal_tiling"
+    DRAW_DIAGONAL_FROM_OBJECT = "draw_diagonal_from_object"
 
 
 class Selector(Enum):
