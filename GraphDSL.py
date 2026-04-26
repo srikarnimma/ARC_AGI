@@ -41,6 +41,7 @@ class OperationType(Enum):
     MOVE_TOWARD_OTHER = "move_toward_other"
     STAIRCASE = "staircase"
     SORT_COLOR_COUNTS = "sort_color_counts"
+    FRACTAL_TILING = "fractal_tiling"
 
 
 class Selector(Enum):

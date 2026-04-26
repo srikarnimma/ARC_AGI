@@ -657,6 +657,24 @@ class AStarProgramSearch:
             )
         )
 
+        # Sort color
+        for init_flip_h in [False, True]:
+            for init_flip_v in [False, True]:
+                actions.append(
+                    Operation(
+                        type=OperationType.FRACTAL_TILING,
+                        selector=Selector.ALL,
+                        params={"rep_size": 2, "init_flip_h": init_flip_h, "init_flip_v": init_flip_v},
+                    )
+                )
+                actions.append(
+                    Operation(
+                        type=OperationType.FRACTAL_TILING,
+                        selector=Selector.ALL,
+                        params={"rep_size": 3, "init_flip_h": init_flip_h, "init_flip_v": init_flip_v},
+                    )
+                )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

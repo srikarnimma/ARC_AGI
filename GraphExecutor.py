@@ -34,6 +34,7 @@ class GraphExecutor:
             OperationType.REFLECT_AGAINST_BRACKETS,
             OperationType.STAIRCASE,
             OperationType.SORT_COLOR_COUNTS,
+            OperationType.FRACTAL_TILING,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -403,6 +404,19 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 index = int(operation.params.get('index', 0))
                 current_grid = self._move_toward_other(grid_state, index)
+
+            elif operation.type == OperationType.FRACTAL_TILING:
+                if current_grid is not None:
+                    grid_state = current_grid
+                elif object_state_dirty:
+                    grid_state = self._render_objects(objects_map, grid_height, grid_width)
+                else:
+                    grid_state = input_grid.copy()
+
+                rep_size = int(operation.params.get('rep_size', 2))
+                init_flip_h = bool(operation.params.get('init_flip_h', False))
+                init_flip_v = bool(operation.params.get('init_flip_v', False))
+                current_grid = self._fractal_tiling(grid_state, rep_size, init_flip_h, init_flip_v)
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -1702,4 +1716,56 @@ class GraphExecutor:
         for col_idx, (color, count) in enumerate(sorted_data):
             output[:count, col_idx] = color
             
+        return output
+    
+    def _fractal_tiling(
+        self, 
+        grid: np.ndarray, 
+        rep_size: int = 2, 
+        init_flip_h: bool = False, 
+        init_flip_v: bool = False
+    ) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("-------", rep_size, init_flip_h, init_flip_v)
+        # print(grid)
+
+        # Prepare the 'Adapted' First Tile
+        base_tile = grid.copy()
+        if init_flip_h:
+            base_tile = np.flip(base_tile, axis=1)
+        if init_flip_v:
+            base_tile = np.flip(base_tile, axis=0)
+
+        h, w = base_tile.shape
+        output = np.zeros((h * rep_size, w * rep_size), dtype=int)
+
+        # Pre-calculate the four possible symmetry states of the adapted tile
+        t_normal = base_tile
+        t_flip_h = np.flip(base_tile, axis=1)
+        t_flip_v = np.flip(base_tile, axis=0)
+        t_flip_both = np.flip(np.flip(base_tile, axis=0), axis=1)
+
+        # Fill the lattice
+        for r_idx in range(rep_size):
+            for c_idx in range(rep_size):
+                row_even = (r_idx % 2 == 0)
+                col_even = (c_idx % 2 == 0)
+
+                if row_even and col_even:
+                    current_tile = t_normal
+                elif row_even and not col_even:
+                    current_tile = t_flip_h
+                elif not row_even and col_even:
+                    current_tile = t_flip_v
+                else:
+                    current_tile = t_flip_both
+
+                r_s, r_e = r_idx * h, (r_idx + 1) * h
+                c_s, c_e = c_idx * w, (c_idx + 1) * w
+                output[r_s:r_e, c_s:c_e] = current_tile
+
+        # print(output)
+        # print("~~~~~~")
         return output
