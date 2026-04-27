@@ -39,6 +39,7 @@ class GraphExecutor:
             OperationType.HOUSE,
             OperationType.BUILD_COLOR_BRIDGES,
             OperationType.FUNKY_BRIDGE,
+            OperationType.COUNT_2x2,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -479,6 +480,12 @@ class GraphExecutor:
                 index = int(operation.params.get('index', 0))
                 current_grid = self._funky_bridge(grid_state, index)
 
+            elif operation.type == OperationType.COUNT_2x2:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._count_2x2(grid_state)
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -2237,5 +2244,48 @@ class GraphExecutor:
             # Draw
             if (curr_r, curr_c) != (r_tge, c_tge):
                 output[curr_r, curr_c] = bridge_color
+                
+        return output
+    
+    def _count_2x2(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+        
+        # Only 2x2 objects
+        valid_colors = set(np.unique(grid)) - {0}
+        colors_to_remove = set()
+        
+        for obj in all_objs:
+            if obj.color == 0: continue
+            h, w = (obj.bbox[2] - obj.bbox[0] + 1), (obj.bbox[3] - obj.bbox[1] + 1)
+            if h != 2 or w != 2 or len(obj.pixels) != 4:
+                colors_to_remove.add(obj.color)
+                
+        final_colors = valid_colors - colors_to_remove
+        
+        # Count occurrences of 2x2 blocks for each valid color
+        counts = []
+        for color in final_colors:
+            color_objs = [o for o in all_objs if o.color == color]
+            count = len(color_objs)
+            if count > 0:
+                counts.append((count, color))
+                
+        # Sort by count in ascending order
+        counts.sort(key=lambda x: x[0])
+        if not counts:
+            return np.zeros((1, 1), dtype=int)
+            
+        # Output
+        out_h = len(counts)
+        out_w = max(c[0] for c in counts)
+        output = np.zeros((out_h, out_w), dtype=int)
+        
+        for row_idx, (count, color) in enumerate(counts):
+            for col_idx in range(count):
+                output[row_idx, col_idx] = color
                 
         return output

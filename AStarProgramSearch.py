@@ -39,7 +39,7 @@ class AStarProgramSearch:
         allow_translate: bool = True,
         allow_copy: bool = False,
         size_mismatch_penalty: float = 0.5,
-        debug: bool = True,
+        debug: bool = False,
         debug_every: int = 50,
         print_closest: bool = True,
     ) -> None:
@@ -749,6 +749,15 @@ class AStarProgramSearch:
                 type=OperationType.FUNKY_BRIDGE,
                 selector=Selector.ALL,
                 params={"index": 1},
+            )
+        )
+
+        # Count 2x2
+        actions.append(
+            Operation(
+                type=OperationType.COUNT_2x2,
+                selector=Selector.ALL,
+                params={},
             )
         )
 

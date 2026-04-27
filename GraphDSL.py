@@ -49,6 +49,7 @@ class OperationType(Enum):
     HOUSE = "house"
     BUILD_COLOR_BRIDGES = "build_color_bridges"
     FUNKY_BRIDGE = "funky_bridge"
+    COUNT_2x2 = "count_2x2"
 
 
 class Selector(Enum):
