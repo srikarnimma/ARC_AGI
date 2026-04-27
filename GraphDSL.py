@@ -47,6 +47,7 @@ class OperationType(Enum):
     OUTLINE_ENCLOSED_SHAPE = "outline_enclosed_shape"
     EXTRACT_CONTAINER_CONTENTS = "extract_container_contents"
     HOUSE = "house"
+    BUILD_COLOR_BRIDGES = "build_color_bridges"
 
 
 class Selector(Enum):

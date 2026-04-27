@@ -37,6 +37,7 @@ class GraphExecutor:
             OperationType.FRACTAL_TILING,
             OperationType.EXTRACT_CONTAINER_CONTENTS,
             OperationType.HOUSE,
+            OperationType.BUILD_COLOR_BRIDGES,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -461,6 +462,13 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._house(grid_state)
+
+            elif operation.type == OperationType.BUILD_COLOR_BRIDGES:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._build_color_bridges(grid_state)
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -2106,4 +2114,62 @@ class GraphExecutor:
             
         # print(output)
         # print("~~~")
+        return output
+    
+    def _build_color_bridges(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        output = grid.copy()
+        rows, cols = grid.shape
+        
+        # If overlap pick a unique color
+        present_colors = np.unique(grid)
+        conflict_color = next((c for c in range(1, 10) if c not in present_colors), 1)
+
+        # Extract all objects and group by color
+        all_objs = extractor.extract(grid)
+        color_map = {}
+        for obj in all_objs:
+            if obj.color == 0: continue
+            if obj.color not in color_map:
+                color_map[obj.color] = []
+            color_map[obj.color].append(obj)
+
+        # Exactly two single pixel objects 
+        for color, objects in color_map.items():
+            if len(objects) != 2:
+                continue
+            if len(objects[0].pixels) != 1 or len(objects[1].pixels) != 1:
+                continue
+                
+            # Convert set of one tuple to coordinates
+            (rA, cA) = list(objects[0].pixels)[0]
+            (rB, cB) = list(objects[1].pixels)[0]
+            
+            dr, dc = rB - rA, cB - cA
+            
+            if (dr == 0) or (dc == 0) or (abs(dr) == abs(dc)):
+                step_r = np.sign(dr)
+                step_c = np.sign(dc)
+                
+                curr_r, curr_c = int(rA + step_r), int(cA + step_c)
+                target_r, target_c = int(rB), int(cB)
+                
+                # Draw Bridge with Collision Logic
+                while (curr_r, curr_c) != (target_r, target_c):
+                    if not (0 <= curr_r < rows and 0 <= curr_c < cols):
+                        break
+                    
+                    if grid[curr_r, curr_c] == 0:
+                        # Only color if it hasn't been marked by a conflict already
+                        if output[curr_r, curr_c] == 0:
+                            output[curr_r, curr_c] = color
+                    else:
+                        output[curr_r, curr_c] = conflict_color
+                    
+                    curr_r += step_r
+                    curr_c += step_c
+                    
         return output

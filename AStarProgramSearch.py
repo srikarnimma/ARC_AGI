@@ -727,6 +727,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Build color bridges
+        actions.append(
+            Operation(
+                type=OperationType.BUILD_COLOR_BRIDGES,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:
