@@ -35,6 +35,8 @@ class GraphExecutor:
             OperationType.STAIRCASE,
             OperationType.SORT_COLOR_COUNTS,
             OperationType.FRACTAL_TILING,
+            OperationType.EXTRACT_CONTAINER_CONTENTS,
+            OperationType.HOUSE,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -445,6 +447,20 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._outline_enclosed_shape(grid_state)
+
+            elif operation.type == OperationType.EXTRACT_CONTAINER_CONTENTS:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._extract_container_contents(grid_state)
+
+            elif operation.type == OperationType.HOUSE:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._house(grid_state)
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -1995,4 +2011,99 @@ class GraphExecutor:
 
         # print(output)
         # print("~~~~~~")
+        return output
+    
+    def _extract_container_contents(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return np.zeros((3, 3), dtype=int)
+
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+        
+        container = next((obj for obj in all_objs if obj.is_closed_shape == True), None)
+        if not container:
+            return np.zeros((3, 3), dtype=int)
+
+        min_r, min_c, max_r, max_c = container.bbox
+        int_min_r, int_max_r = min_r + 1, max_r - 1
+        int_min_c, int_max_c = min_c + 1, max_c - 1
+
+        # Count pixels
+        collected_pixels = []
+        for r in range(int_min_r, int_max_r + 1):
+            for c in range(int_min_c, int_max_c + 1):
+                if grid[r, c] != 0:
+                    collected_pixels.append(grid[r, c])
+
+        # 4. Fill the 3x3 output top-left to bottom-right
+        output = np.zeros((3, 3), dtype=int)
+        idx = 0
+        for r in range(3):
+            for c in range(3):
+                if idx < len(collected_pixels):
+                    output[r, c] = collected_pixels[idx]
+                    idx += 1
+                else:
+                    break # No more pixels to fill
+            if idx >= len(collected_pixels):
+                break
+
+        return output
+    
+    def _house(self, grid: np.ndarray) -> np.ndarray:
+        if grid.shape[0] != 1:
+            return grid.copy()
+        
+        # print("----")
+        # print(grid)
+        
+        n = grid.shape[1]
+        output = np.zeros((n, n), dtype=int)
+        
+        # Starting roof tile
+        start_col = -1
+        color = 0
+        for c in range(n):
+            if grid[0, c] != 0:
+                start_col = c
+                color = grid[0, c]
+                break
+                
+        if start_col == -1:
+            return output
+
+        # Draw roof
+        red_pixels = []
+        for r in range(n):
+            for c in range(n):
+                if abs(c - start_col) == r:
+                    output[r, c] = color
+                    red_pixels.append((r, c))
+
+        # Draw diagonals from starting points
+        r = 1
+        c = start_col + 1
+        while True:
+            r += 2
+            c -= 2
+            
+            # Stop when can't possible be in grid
+            if (c - r) < -(n - 1):
+                break
+
+            # If the seed is off-grid
+            curr_r, curr_c = r, c
+            while curr_r < 0 or curr_c < 0:
+                curr_r += 1
+                curr_c += 1
+            
+            # diag
+            while curr_r < n and curr_c < n:
+                if output[curr_r, curr_c] == 0:
+                    output[curr_r, curr_c] = 1 
+                curr_r += 1
+                curr_c += 1
+            
+        # print(output)
+        # print("~~~")
         return output

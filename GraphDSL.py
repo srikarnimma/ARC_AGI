@@ -45,6 +45,8 @@ class OperationType(Enum):
     DRAW_DIAGONAL_FROM_OBJECT = "draw_diagonal_from_object"
     LASER_BEAM = "laser_beam"
     OUTLINE_ENCLOSED_SHAPE = "outline_enclosed_shape"
+    EXTRACT_CONTAINER_CONTENTS = "extract_container_contents"
+    HOUSE = "house"
 
 
 class Selector(Enum):

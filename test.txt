@@ -1,40 +1,241 @@
 
-=== Running Milestone C (16 problem(s)) ===
-[ArcAgent] Selected A* ops: SPAN_MATCHING_COLOR_ENDPOINTS(ALL; include_cols=False)
-[1/16] 22eb0ac0 | correct=True | time=0.051s
-[ArcAgent] Selected A* ops: LASER_BEAM(ALL)
-[2/16] 25d487eb | correct=True | time=0.226s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=XOR, output_color=3, split_direction=ROW)
-[3/16] 3428a4f5 | correct=True | time=0.048s
-[ArcAgent] Selected A* ops: CROP_NONZERO_BBOX(ALL) -> CROP_RECOLOR_BY_CORNER_MARKERS(ALL)
-[4/16] 3de23699 | correct=True | time=1.120s
-[ArcAgent] Selected A* ops: DRAW_DIAGONAL_FROM_OBJECT(ALL; index=0)
-[5/16] 5c0a986e | correct=True | time=0.024s
-[ArcAgent] Selected A* ops: FRACTAL_TILING(ALL; init_flip_h=False, init_flip_v=False, rep_size=2)
-[6/16] 62c24649 | correct=True | time=0.105s
-[ArcAgent] Selected A* ops: ROTATE_GRID(ALL; angle=270) -> FLIP_GRID(ALL; direction=horizontal)
-[7/16] 74dd1130 | correct=True | time=0.371s
-[ArcAgent] Selected A* ops: FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=3)
-[8/16] 7b6016b9 | correct=True | time=0.068s
-[ArcAgent] Selected A* ops: SORT_COLOR_COUNTS(ALL)
-[9/16] 9af7a82c | correct=True | time=0.081s
-[ArcAgent] Selected A* ops: RECOLOR(BY_SHAPE; color=1, new_color=8, shape=circle)
-[10/16] b2862040 | correct=True | time=0.022s
-[ArcAgent] Selected A* ops: STAIRCASE(ALL)
-[11/16] bbc9ae5d | correct=True | time=0.114s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=ADD, output_color=1, split_direction=COL)
-[12/16] cf98881b | correct=True | time=0.144s
-[ArcAgent] Selected A* ops: MOVE_TOWARD_OTHER(ALL; index=0)
-[13/16] dc433765 | correct=True | time=12.104s
-[ArcAgent] Selected A* ops: AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=1, split_direction=ROW)
-[14/16] e98196ab | correct=True | time=0.138s
-[ArcAgent] Selected A* ops: SPAN_DOTTED(ALL) -> ENLARGE_SINGLE_PIXEL_OBJECTS(ALL; target_color=in)
-[ArcAgent] Timeout reached. Selected A* ops: SPAN_DOTTED(ALL) -> ENLARGE_SINGLE_PIXEL_OBJECTS(ALL; target_color=in)
-[15/16] f35d900a | correct=True | time=20.009s
-[ArcAgent] Selected A* ops: REFLECT_AGAINST_BRACKETS(ALL)
-[16/16] f8a8fe49 | correct=True | time=0.031s
-Milestone C summary: 16/16 (100.0%) in 34.66s | results: Milestone_C_Results.csv
+=== Running Milestone D (1 problem(s)) ===
+------
+[ArcAgent] Problem: c1990cce
+[ArcAgent] Test input grid:
+[[0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0]]
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=0, new_color=1)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=0, new_color=2)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=1, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=1, new_color=2)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color=2, new_color=0)
+[A*] explore depth=1 loss=0.2170 path=RECOLOR(BY_COLOR; color=2, new_color=1)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=3, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=3, new_color=1)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=3, new_color=2)
+[A*] explore depth=1 loss=0.5057 path=RECOLOR(BY_COLOR; color=0, new_color_from=other_nonzero)
+[A*] explore depth=1 loss=0.5057 path=RECOLOR(BY_COLOR; color=0, new_color_from=other_nonzero_input)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero, exclude_color=0, new_color=0)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero_input, exclude_color=0, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=1, new_color_from=other_nonzero)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=1, new_color_from=other_nonzero_input)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero, exclude_color=1, new_color=0)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero_input, exclude_color=1, new_color=0)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color=2, new_color_from=other_nonzero)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color=2, new_color_from=other_nonzero_input)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color_from=other_nonzero, exclude_color=2, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color_from=other_nonzero_input, exclude_color=2, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=3, new_color_from=other_nonzero)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_COLOR; color=3, new_color_from=other_nonzero_input)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero, exclude_color=3, new_color=0)
+[A*] explore depth=1 loss=0.5279 path=RECOLOR(BY_COLOR; color_from=other_nonzero_input, exclude_color=3, new_color=0)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=1, shape=circle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=1, shape=circle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=2, new_color=1, shape=circle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=2, shape=circle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=2, shape=circle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=1, shape=cycle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=1, shape=cycle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=2, new_color=1, shape=cycle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=2, shape=cycle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=2, shape=cycle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=1, shape=triangle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=1, shape=triangle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=2, new_color=1, shape=triangle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=2, shape=triangle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=2, shape=triangle)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=1, shape=arrow)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=1, shape=arrow)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=2, new_color=1, shape=arrow)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; new_color=2, shape=arrow)
+[A*] explore depth=1 loss=0.2150 path=RECOLOR(BY_SHAPE; color=0, new_color=2, shape=arrow)
+[A*] explore depth=1 loss=0.2150 path=FLIP(ALL; direction=horizontal)
+[A*] explore depth=1 loss=0.2150 path=FLIP_GRID(ALL; direction=horizontal)
+[A*] explore depth=1 loss=0.2150 path=FLIP(ALL; direction=vertical)
+[A*] explore depth=1 loss=0.2150 path=FLIP_GRID(ALL; direction=vertical)
+[A*] explore depth=1 loss=0.2150 path=MIRROR_VERTICAL(ALL)
+[A*] explore depth=1 loss=0.4362 path=MIRROR_HORIZONTAL(ALL)
+[A*] explore depth=1 loss=0.2150 path=ROTATE(ALL; angle=90)
+[A*] explore depth=1 loss=0.2670 path=ROTATE_GRID(ALL; angle=90)
+[A*] explore depth=1 loss=0.2150 path=ROTATE(ALL; angle=180)
+[A*] explore depth=1 loss=0.2150 path=ROTATE_GRID(ALL; angle=180)
+[A*] explore depth=1 loss=0.2150 path=ROTATE(ALL; angle=270)
+[A*] explore depth=1 loss=0.2670 path=ROTATE_GRID(ALL; angle=270)
+[A*] explore depth=1 loss=0.5279 path=TRANSLATE(ALL; offset_c=-1, offset_r=-1)
+[A*] explore depth=1 loss=0.5279 path=TRANSLATE(ALL; offset_c=1, offset_r=-1)
+[A*] explore depth=1 loss=0.5279 path=TRANSLATE(ALL; offset_c=-1, offset_r=1)
+[A*] explore depth=1 loss=0.5279 path=TRANSLATE(ALL; offset_c=1, offset_r=1)
+[A*] explore depth=1 loss=0.2150 path=DELETE(BY_COLOR; color=0)
+[A*] explore depth=1 loss=0.5279 path=DELETE(BY_COLOR; color=2)
+[A*] explore depth=1 loss=0.2150 path=HOLLOW(ALL)
+[A*] explore depth=1 loss=0.2150 path=HOLLOW(BY_COLOR; color=0)
+[A*] explore depth=1 loss=0.2150 path=HOLLOW(BY_COLOR; color=2)
+[A*] explore depth=1 loss=0.4300 path=CROP_NONZERO_BBOX(ALL)
+[A*] explore depth=1 loss=0.2150 path=CROP_RECOLOR_BY_CORNER_MARKERS(ALL)
+[A*] explore depth=1 loss=0.4300 path=RECOLOR_MAIN_BY_EXTERNAL_PAIRS(ALL)
+[A*] explore depth=1 loss=0.2150 path=CONTEXTUAL_SYMMETRY_FILL(ALL)
+[A*] explore depth=1 loss=0.5835 path=SPIRAL_FILL(ALL; color=3)
+[A*] explore depth=1 loss=0.2150 path=SPAN_MATCHING_COLOR_ENDPOINTS(ALL; include_cols=False)
+[A*] explore depth=1 loss=0.2150 path=SPAN_MATCHING_COLOR_ENDPOINTS(ALL; include_cols=True)
+[A*] explore depth=1 loss=0.2150 path=SPAN_DOTTED(ALL)
+[A*] explore depth=1 loss=0.2150 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=1, exterior_color=-1)
+[A*] explore depth=1 loss=0.2150 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=1, exterior_color=-1, mode=local_component_mode)
+[A*] explore depth=1 loss=0.4784 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=1, exterior_color=1)
+[A*] explore depth=1 loss=0.5057 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=1, exterior_color=2)
+[A*] explore depth=1 loss=0.2150 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=-1)
+[A*] explore depth=1 loss=0.2150 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=-1, mode=local_component_mode)
+[A*] explore depth=1 loss=0.4784 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=1)
+[A*] explore depth=1 loss=0.5057 path=FILL_ENCLOSED_ZEROS(ALL; enclosed_color=2, exterior_color=2)
+[A*] explore depth=1 loss=0.5279 path=REMOVE_SINGLE_PIXEL_OBJECTS(ALL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=AND, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=AND, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=AND, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=AND, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=OR, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=OR, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=OR, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=OR, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=XOR, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=XOR, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=XOR, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=XOR, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=XNOR, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.5550 path=AND_SPLIT(ALL; logic_op=XNOR, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=XNOR, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.5853 path=AND_SPLIT(ALL; logic_op=XNOR, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=NAND, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.5550 path=AND_SPLIT(ALL; logic_op=NAND, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=NAND, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.5853 path=AND_SPLIT(ALL; logic_op=NAND, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=NOR, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.5550 path=AND_SPLIT(ALL; logic_op=NOR, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=NOR, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.5853 path=AND_SPLIT(ALL; logic_op=NOR, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=FIT_ADD, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=ADD, output_color=1, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=ADD, output_color=1, split_direction=COL)
+[A*] explore depth=1 loss=0.2150 path=AND_SPLIT(ALL; logic_op=ADD, output_color=2, split_direction=ROW)
+[A*] explore depth=1 loss=0.3575 path=AND_SPLIT(ALL; logic_op=ADD, output_color=2, split_direction=COL)
+[A*] explore depth=1 loss=0.3368 path=ENLARGE_SINGLE_PIXEL_OBJECTS(ALL)
+[A*] explore depth=1 loss=1.0000 path=ENLARGE_SINGLE_PIXEL_OBJECTS(ALL; target_color=in)
+[A*] explore depth=1 loss=0.2150 path=DRAW_DIAGONALS_FROM_SINGLE_PIXELS(ALL)
+[A*] explore depth=1 loss=0.5279 path=TETRIS(ALL)
+[A*] explore depth=1 loss=0.2150 path=REFLECT_AGAINST_BRACKETS(ALL)
+[A*] explore depth=1 loss=0.2150 path=MOVE_TOWARD_OTHER(ALL; index=0)
+[A*] explore depth=1 loss=0.2150 path=MOVE_TOWARD_OTHER(ALL; index=1)
+[A*] explore depth=1 loss=0.2150 path=DRAW_DIAGONAL_FROM_OBJECT(ALL; index=0)
+[A*] explore depth=1 loss=0.2150 path=DRAW_DIAGONAL_FROM_OBJECT(ALL; index=1)
+[A*] explore depth=1 loss=0.3850 path=STAIRCASE(ALL)
+[A*] explore depth=1 loss=0.4300 path=SORT_COLOR_COUNTS(ALL)
+[A*] explore depth=1 loss=0.5627 path=FRACTAL_TILING(ALL; init_flip_h=False, init_flip_v=False, rep_size=2)
+[A*] explore depth=1 loss=0.6124 path=FRACTAL_TILING(ALL; init_flip_h=False, init_flip_v=False, rep_size=3)
+[A*] explore depth=1 loss=0.5627 path=FRACTAL_TILING(ALL; init_flip_h=False, init_flip_v=True, rep_size=2)
+[A*] explore depth=1 loss=0.6124 path=FRACTAL_TILING(ALL; init_flip_h=False, init_flip_v=True, rep_size=3)
+[A*] explore depth=1 loss=0.5627 path=FRACTAL_TILING(ALL; init_flip_h=True, init_flip_v=False, rep_size=2)
+[A*] explore depth=1 loss=0.6124 path=FRACTAL_TILING(ALL; init_flip_h=True, init_flip_v=False, rep_size=3)
+[A*] explore depth=1 loss=0.5627 path=FRACTAL_TILING(ALL; init_flip_h=True, init_flip_v=True, rep_size=2)
+[A*] explore depth=1 loss=0.6124 path=FRACTAL_TILING(ALL; init_flip_h=True, init_flip_v=True, rep_size=3)
+[A*] explore depth=1 loss=0.2150 path=LASER_BEAM(ALL)
+[A*] explore depth=1 loss=0.2150 path=OUTLINE_ENCLOSED_SHAPE(ALL)
+[A*] explore depth=1 loss=0.5016 path=EXTRACT_CONTAINER_CONTENTS(ALL)
+----
+[[0 0 0 0 0 0 2 0 0 0 0 0 0]]
+[[0 0 0 0 0 0 2 0 0 0 0 0 0]
+ [0 0 0 0 0 2 0 2 0 0 0 0 0]
+ [0 0 0 0 2 0 0 0 2 0 0 0 0]
+ [0 0 0 2 0 1 0 0 0 2 0 0 0]
+ [0 0 2 0 0 0 1 0 0 0 2 0 0]
+ [0 2 0 1 0 0 0 1 0 0 0 2 0]
+ [2 0 0 0 1 0 0 0 1 0 0 0 2]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0]]
+~~~
+----
+[[0 0 2 0 0]]
+[[0 0 2 0 0]
+ [0 2 0 2 0]
+ [2 0 0 0 2]
+ [0 1 0 0 0]
+ [0 0 1 0 0]]
+~~~
+----
+[[0 0 0 2 0 0 0]]
+[[0 0 0 2 0 0 0]
+ [0 0 2 0 2 0 0]
+ [0 2 0 0 0 2 0]
+ [2 0 1 0 0 0 2]
+ [0 0 0 1 0 0 0]
+ [1 0 0 0 1 0 0]
+ [0 1 0 0 0 1 0]]
+~~~
+[A*] explore depth=1 loss=0.0000 path=HOUSE(ALL)
+----
+[[0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0]]
+[[0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 2 0 2 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 2 0 0 0 2 0 0 0 0 0 0]
+ [0 0 0 0 0 2 0 1 0 0 0 2 0 0 0 0 0]
+ [0 0 0 0 2 0 0 0 1 0 0 0 2 0 0 0 0]
+ [0 0 0 2 0 1 0 0 0 1 0 0 0 2 0 0 0]
+ [0 0 2 0 0 0 1 0 0 0 1 0 0 0 2 0 0]
+ [0 2 0 1 0 0 0 1 0 0 0 1 0 0 0 2 0]
+ [2 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 2]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]]
+~~~
+[ArcAgent] Proposed output (A* | loss=0.0000 | score=1.0000):
+[[0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 2 0 2 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 2 0 0 0 2 0 0 0 0 0 0]
+ [0 0 0 0 0 2 0 1 0 0 0 2 0 0 0 0 0]
+ [0 0 0 0 2 0 0 0 1 0 0 0 2 0 0 0 0]
+ [0 0 0 2 0 1 0 0 0 1 0 0 0 2 0 0 0]
+ [0 0 2 0 0 0 1 0 0 0 1 0 0 0 2 0 0]
+ [0 2 0 1 0 0 0 1 0 0 0 1 0 0 0 2 0]
+ [2 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 2]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]]
+[ArcAgent] Selected A* ops: HOUSE(ALL)
+[ArcAgent] Final prediction 1 (initial=1.0000, similarity=0.5899):
+[[0 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 0 2 0 2 0 0 0 0 0 0 0]
+ [0 0 0 0 0 0 2 0 0 0 2 0 0 0 0 0 0]
+ [0 0 0 0 0 2 0 1 0 0 0 2 0 0 0 0 0]
+ [0 0 0 0 2 0 0 0 1 0 0 0 2 0 0 0 0]
+ [0 0 0 2 0 1 0 0 0 1 0 0 0 2 0 0 0]
+ [0 0 2 0 0 0 1 0 0 0 1 0 0 0 2 0 0]
+ [0 2 0 1 0 0 0 1 0 0 0 1 0 0 0 2 0]
+ [2 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 2]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]
+ [0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]
+ [0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0 0]
+ [0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1 0]
+ [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 1]]
+[1/1] c1990cce | correct=True | time=0.075s
+Milestone D summary: 1/1 (100.0%) in 0.07s | results: Milestone_D_Results.csv
 
 === Final Summary ===
-Milestone C: 16/16 (100.0%) in 34.66s
-Overall: 16/16 (100.0%)
+Milestone D: 1/1 (100.0%) in 0.07s
+Overall: 1/1 (100.0%)

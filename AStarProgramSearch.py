@@ -39,7 +39,7 @@ class AStarProgramSearch:
         allow_translate: bool = True,
         allow_copy: bool = False,
         size_mismatch_penalty: float = 0.5,
-        debug: bool = False,
+        debug: bool = True,
         debug_every: int = 50,
         print_closest: bool = True,
     ) -> None:
@@ -704,6 +704,24 @@ class AStarProgramSearch:
         actions.append(
             Operation(
                 type=OperationType.OUTLINE_ENCLOSED_SHAPE,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
+        # Extract container contents
+        actions.append(
+            Operation(
+                type=OperationType.EXTRACT_CONTAINER_CONTENTS,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
+        # House
+        actions.append(
+            Operation(
+                type=OperationType.HOUSE,
                 selector=Selector.ALL,
                 params={},
             )
