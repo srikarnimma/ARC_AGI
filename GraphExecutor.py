@@ -42,6 +42,7 @@ class GraphExecutor:
             OperationType.FUNKY_BRIDGE,
             OperationType.BRIDGE_ALIGNED,
             OperationType.COUNT_2x2,
+            OperationType.FILL_TILE
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -502,6 +503,13 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._count_2x2(grid_state)
+
+            elif operation.type == OperationType.FILL_TILE:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._fill_tile(grid_state)
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -2456,3 +2464,141 @@ class GraphExecutor:
                 output[row_idx, col_idx] = color
                 
         return output
+    
+    def _fill_tile(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        try:
+
+            # print("---")
+            # print(grid)
+            
+            output = grid.copy()
+            rows, cols = grid.shape
+            
+            # Grid color (most common)
+            unique_colors, counts = np.unique(grid, return_counts=True)
+            potential_grid_colors = unique_colors[unique_colors != 0]
+            if potential_grid_colors.size == 0:
+                return output
+            grid_color = potential_grid_colors[np.argmax(counts[unique_colors != 0])]
+
+            grid_rows = [r for r in range(rows) if np.all((grid[r, :] == grid_color))]
+            grid_cols = [c for c in range(cols) if np.all((grid[:, c] == grid_color))]
+            
+            # print(grid_rows, grid_cols)
+
+            def get_bounds(indices, limit):
+                bounds = []
+                curr = 0
+                for idx in sorted(indices):
+                    if idx > curr:
+                        bounds.append((curr, idx - 1))
+                    curr = idx + 1
+                if curr < limit:
+                    bounds.append((curr, limit - 1))
+                return bounds
+
+            row_bounds = get_bounds(grid_rows, rows)
+            col_bounds = get_bounds(grid_cols, cols)
+
+            # Tile grid
+            tile_grid = []
+            for rb in row_bounds:
+                row_list = []
+                for cb in col_bounds:
+                    data = grid[rb[0]:rb[1]+1, cb[0]:cb[1]+1]
+                    row_list.append({
+                        'data': data, 
+                        'is_empty': np.all(data == 0), 
+                        'pos': (rb[0], cb[0])
+                    })
+                tile_grid.append(row_list)
+
+            num_tr = len(tile_grid)
+            num_tc = len(tile_grid[0]) if num_tr > 0 else 0
+
+            # Helper function to check if two tiles match
+            def tiles_match(tile1, tile2):
+                if tile1.shape != tile2.shape:
+                    return False
+                if np.array_equal(tile1, tile2):
+                    return True
+                if np.array_equal(np.flipud(tile1), tile2):
+                    return True
+                if np.array_equal(np.fliplr(tile1), tile2):
+                    return True
+                if np.array_equal(np.flipud(np.fliplr(tile1)), tile2):
+                    return True
+                return False
+
+            # Use sliding window to process all 2x2 tile quartets
+            for r in range(0, num_tr - 1):
+                for c in range(0, num_tc - 1):
+                    # print(f"\n2x2 Quartet at tile position ({r}, {c}):")
+                    tl = tile_grid[r][c]
+                    tr = tile_grid[r][c+1]
+                    bl = tile_grid[r+1][c]
+                    br = tile_grid[r+1][c+1]
+                    tiles = [
+                        (tl, (0, 0)), (tr, (0, 1)),
+                        (bl, (1, 0)), (br, (1, 1))
+                    ]
+                    
+                    # Same dims
+                    all_shapes = [tile['data'].shape for tile, _ in tiles]
+                    if len(set(all_shapes)) > 1:
+                        # print(f"  Tiles have different shapes, skipping")
+                        continue
+                    
+                    # Count empty tiles
+                    empty_tiles = [(tile, pos) for tile, pos in tiles if tile['is_empty']]
+                    non_empty_tiles = [(tile, pos) for tile, pos in tiles if not tile['is_empty']]
+                    
+                    # 3 matching and 1 empty
+                    if len(empty_tiles) != 1:
+                        # print(f"  {len(empty_tiles)} empty tiles, need exactly 1")
+                        continue
+                    if len(non_empty_tiles) != 3:
+                        # print(f"  {len(non_empty_tiles)} non-empty tiles, need exactly 3")
+                        continue
+                    
+                    tile1_data = non_empty_tiles[0][0]['data']
+                    tile2_data = non_empty_tiles[1][0]['data']
+                    tile3_data = non_empty_tiles[2][0]['data']
+                    if not (tiles_match(tile1_data, tile2_data) and tiles_match(tile2_data, tile3_data)):
+                        # print(f"  The 3 non-empty tiles don't match each other")
+                        continue
+                    
+                    # print(f"  3 non-empty tiles match! Filling the empty tile...")
+                    
+                    # What is empty tile
+                    empty_tile, empty_pos = empty_tiles[0]
+                    empty_dr, empty_dc = empty_pos
+                    
+                    source_tile = tile1_data
+                    source_dr, source_dc = non_empty_tiles[0][1]
+                    v_flip = (empty_dr != source_dr)
+                    h_flip = (empty_dc != source_dc)
+                    
+                    transformed = source_tile.copy()
+                    if v_flip:
+                        transformed = np.flipud(transformed)
+                    if h_flip:
+                        transformed = np.fliplr(transformed)
+                    
+                    # Fill the empty tile
+                    r_start, c_start = empty_tile['pos']
+                    h, w = transformed.shape
+                    output[r_start:r_start+h, c_start:c_start+w] = transformed
+                    # print(f"  Filled empty position {empty_pos} with reflections (v_flip: {v_flip}, h_flip: {h_flip})")
+
+
+
+            # print(output)
+            # print("~~~")
+            return output
+        except Exception as e:
+            print(e)
+            return output

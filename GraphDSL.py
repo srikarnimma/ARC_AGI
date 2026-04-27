@@ -52,6 +52,7 @@ class OperationType(Enum):
     FUNKY_BRIDGE = "funky_bridge"
     BRIDGE_ALIGNED = "bridge_aligned"
     COUNT_2x2 = "count_2x2"
+    FILL_TILE = "fill_tile"
 
 
 class Selector(Enum):

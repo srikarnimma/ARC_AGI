@@ -779,6 +779,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Fill tile
+        actions.append(
+            Operation(
+                type=OperationType.FILL_TILE,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:
