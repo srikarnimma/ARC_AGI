@@ -38,6 +38,7 @@ class GraphExecutor:
             OperationType.EXTRACT_CONTAINER_CONTENTS,
             OperationType.HOUSE,
             OperationType.BUILD_COLOR_BRIDGES,
+            OperationType.FUNKY_BRIDGE,
         }
     
     def execute(self, input_grid: np.ndarray, graph: SemanticGraph, program: TransformProgram) -> np.ndarray:
@@ -469,6 +470,15 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._build_color_bridges(grid_state)
+
+            elif operation.type == OperationType.FUNKY_BRIDGE:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                index = int(operation.params.get('index', 0))
+                current_grid = self._funky_bridge(grid_state, index)
+
 
             
             elif operation.type in [OperationType.AND, OperationType.OR, OperationType.XOR, 
@@ -2172,4 +2182,60 @@ class GraphExecutor:
                     curr_r += step_r
                     curr_c += step_c
                     
+        return output
+    
+    def _funky_bridge(self, grid: np.ndarray, start_index: int = 0) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+
+        extractor = ObjectExtractor(connectivity="4")
+        output = grid.copy()
+        rows, cols = grid.shape
+        
+        # Unique bridge color
+        present_colors = np.unique(grid)
+        bridge_color = next((c for c in range(1, 10) if c not in present_colors), 1)
+
+        # Exactly two single-pixel objects
+        all_objs = [obj for obj in extractor.extract(grid) if obj.color != 0]
+        single_pixel_objs = [obj for obj in all_objs if len(obj.pixels) == 1]
+        
+        if len(single_pixel_objs) != 2:
+            return grid.copy()
+
+        # Sort and assign source/target based on start_index
+        single_pixel_objs.sort(key=lambda x: x.color)
+        source_pixel = list(single_pixel_objs[start_index].pixels)[0]
+        target_pixel = list(single_pixel_objs[1 - start_index].pixels)[0]
+        
+        r_src, c_src = source_pixel
+        r_tge, c_tge = target_pixel
+        
+        curr_r, curr_c = r_src, c_src
+        
+        # Pathfinding
+        while (curr_r, curr_c) != (r_tge, c_tge):
+            dr = r_tge - curr_r
+            dc = c_tge - curr_c
+            
+            # Step directions
+            step_r = np.sign(dr)
+            step_c = np.sign(dc)
+            
+            # must be more than 1 unit away in BOTH directions to go diag
+            if abs(dr) > 1 and abs(dc) > 1:
+                curr_r += step_r
+                curr_c += step_c
+            # move in the direction that still has a gap
+            elif abs(dr) > 1:
+                curr_r += step_r
+            elif abs(dc) > 1:
+                curr_c += step_c
+            else:
+                break
+                
+            # Draw
+            if (curr_r, curr_c) != (r_tge, c_tge):
+                output[curr_r, curr_c] = bridge_color
+                
         return output

@@ -736,6 +736,22 @@ class AStarProgramSearch:
             )
         )
 
+        # Funky bridge
+        actions.append(
+            Operation(
+                type=OperationType.FUNKY_BRIDGE,
+                selector=Selector.ALL,
+                params={"index": 0},
+            )
+        )
+        actions.append(
+            Operation(
+                type=OperationType.FUNKY_BRIDGE,
+                selector=Selector.ALL,
+                params={"index": 1},
+            )
+        )
+
         return actions
 
     def _collect_colors(self, grids: Iterable[np.ndarray]) -> set[int]:

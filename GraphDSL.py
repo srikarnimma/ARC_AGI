@@ -48,6 +48,7 @@ class OperationType(Enum):
     EXTRACT_CONTAINER_CONTENTS = "extract_container_contents"
     HOUSE = "house"
     BUILD_COLOR_BRIDGES = "build_color_bridges"
+    FUNKY_BRIDGE = "funky_bridge"
 
 
 class Selector(Enum):
