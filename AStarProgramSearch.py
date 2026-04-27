@@ -761,6 +761,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Bridge aligned
+        actions.append(
+            Operation(
+                type=OperationType.BRIDGE_ALIGNED,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         # Count 2x2
         actions.append(
             Operation(

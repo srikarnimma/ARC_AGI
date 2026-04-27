@@ -40,6 +40,7 @@ class GraphExecutor:
             OperationType.HOUSE,
             OperationType.BUILD_COLOR_BRIDGES,
             OperationType.FUNKY_BRIDGE,
+            OperationType.BRIDGE_ALIGNED,
             OperationType.COUNT_2x2,
         }
     
@@ -487,6 +488,13 @@ class GraphExecutor:
                     grid_state = input_grid.copy()
                 index = int(operation.params.get('index', 0))
                 current_grid = self._funky_bridge(grid_state, index)
+
+            elif operation.type == OperationType.BRIDGE_ALIGNED:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._bridge_aligned(grid_state)
 
             elif operation.type == OperationType.COUNT_2x2:
                 if current_grid is not None:
@@ -2347,6 +2355,63 @@ class GraphExecutor:
             if (curr_r, curr_c) != (r_tge, c_tge):
                 output[curr_r, curr_c] = bridge_color
                 
+        return output
+    
+    def _bridge_aligned(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("----")
+        # print(grid)
+
+        extractor = ObjectExtractor(connectivity="8")
+        all_objs = extractor.extract(grid)
+        
+        output = grid.copy()
+        rows, cols = grid.shape
+        
+        # Unique bridge color
+        present_colors = np.unique(grid)
+        bridge_color = next((c for c in range(1, 10) if c not in present_colors), 1)
+
+        # Calculate centroids for all valid objects
+        anchors = []
+        for obj in all_objs:
+            if obj.color == 0:
+                continue
+                
+            coords = list(obj.pixels)
+            r_coords = [p[0] for p in coords]
+            c_coords = [p[1] for p in coords]
+        
+            centroid_r = int(round(sum(r_coords) / len(r_coords)))
+            centroid_c = int(round(sum(c_coords) / len(c_coords)))
+            
+            anchors.append({'r': centroid_r, 'c': centroid_c})
+
+        # Iterate
+        for i in range(len(anchors)):
+            for j in range(i + 1, len(anchors)):
+                a1, a2 = anchors[i], anchors[j]
+                
+                is_row_aligned = (a1['r'] == a2['r'])
+                is_col_aligned = (a1['c'] == a2['c'])
+                
+                if is_row_aligned or is_col_aligned:
+                    r_start, r_end = sorted([a1['r'], a2['r']])
+                    c_start, c_end = sorted([a1['c'], a2['c']])
+                    
+                    # Fill the bridge
+                    for r in range(r_start, r_end + 1):
+                        for c in range(c_start, c_end + 1):
+                            all_anchor_coords = {(a['r'], a['c']) for a in anchors}
+            
+                            # Don't overwrite centroids
+                            if output[r, c] == 0 and (r, c) not in all_anchor_coords:
+                                output[r, c] = bridge_color
+
+        # print(output)
+        # print("~~~~")             
         return output
     
     def _count_2x2(self, grid: np.ndarray) -> np.ndarray:

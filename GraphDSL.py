@@ -50,6 +50,7 @@ class OperationType(Enum):
     HOUSE = "house"
     BUILD_COLOR_BRIDGES = "build_color_bridges"
     FUNKY_BRIDGE = "funky_bridge"
+    BRIDGE_ALIGNED = "bridge_aligned"
     COUNT_2x2 = "count_2x2"
 
 
