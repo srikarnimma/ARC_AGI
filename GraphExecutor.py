@@ -1538,6 +1538,9 @@ class GraphExecutor:
         # Draw a one-cell-thick inward spiral with one-cell spacing.
         if grid.size == 0:
             return grid.copy()
+        
+        # print("---")
+        # print(grid)
 
         rows, cols = grid.shape
         output = np.zeros_like(grid)
@@ -1573,6 +1576,8 @@ class GraphExecutor:
 
             row, col = next_r, next_c
 
+        # print(output)
+        # print("~~~")
         return output
 
     def _enlarge_single_pixel_objects(self, grid: np.ndarray, target_colors: list[int] = []) -> np.ndarray:
@@ -1710,7 +1715,7 @@ class GraphExecutor:
         return final_output
     
     def _tetris_2(self, grid: np.ndarray) -> np.ndarray:
-        if grid.size == 0:
+        if grid.size == 0 or (grid[-1] == 0).any():
             return grid.copy()
         
         # print("--tetris 2---")

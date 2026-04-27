@@ -66,10 +66,24 @@ class AStarProgramSearch:
 
         search_start = time.perf_counter()
 
+        last_timed_op_path: Optional[str] = None
+
         def timed_out() -> bool:
             if max_time_seconds is None:
                 return False
             return (time.perf_counter() - search_start) >= max_time_seconds
+
+        def log_timeout_context() -> None:
+            if not self.debug:
+                return
+            if max_time_seconds is None:
+                return
+            elapsed = time.perf_counter() - search_start
+            context = last_timed_op_path if last_timed_op_path is not None else "<none>"
+            print(
+                f"[A*] timeout elapsed={elapsed:.3f}s budget={max_time_seconds:.3f}s "
+                f"while_running={context}"
+            )
 
         action_space = self._build_action_space(training_pairs)
         start_program = TransformProgram([])
@@ -88,6 +102,7 @@ class AStarProgramSearch:
 
         while heap and expansions < self.max_expansions:
             if timed_out():
+                log_timeout_context()
                 break
 
             _, depth, _, program, loss = heapq.heappop(heap)
@@ -116,10 +131,18 @@ class AStarProgramSearch:
 
             for op in action_space:
                 if timed_out():
+                    log_timeout_context()
                     break
 
                 new_program = TransformProgram(program.operations + [op])
+                last_timed_op_path = self._format_program_path(new_program)
+                step_start = time.perf_counter()
                 new_loss = self._evaluate_program(new_program, training_pairs)
+                step_elapsed = time.perf_counter() - step_start
+
+                if timed_out():
+                    log_timeout_context()
+                    break
 
                 if new_loss < best_loss:
                     best_loss = new_loss
@@ -133,7 +156,7 @@ class AStarProgramSearch:
                 #         self._log_closest_path(child_depth, new_program, new_loss)
 
                 if self.debug:
-                    self._log_op(depth + 1, new_program, new_loss)
+                    self._log_op(depth + 1, new_program, new_loss, step_elapsed)
                 if new_loss == 0.0:
                     return SearchResult(program=new_program, loss=new_loss, expansions=expansions)
                 g_cost = depth + 1
@@ -150,9 +173,12 @@ class AStarProgramSearch:
             f"program_len={len(program.operations)} path={path}"
         )
 
-    def _log_op(self, depth: int, program: TransformProgram, loss: float) -> None:
+    def _log_op(self, depth: int, program: TransformProgram, loss: float, elapsed_seconds: Optional[float] = None) -> None:
         path = self._format_program_path(program)
-        print(f"[A*] explore depth={depth} loss={loss:.4f} path={path}")
+        if elapsed_seconds is None:
+            print(f"[A*] explore depth={depth} loss={loss:.4f} path={path}")
+            return
+        print(f"[A*] explore depth={depth} loss={loss:.4f} step_time={elapsed_seconds:.4f}s path={path}")
 
     def _log_skip_path(self, depth: int, program: TransformProgram, loss: float) -> None:
         path = self._format_program_path(program)
