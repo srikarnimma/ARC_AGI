@@ -614,6 +614,15 @@ class AStarProgramSearch:
             )
         )
 
+        # Tetris 2
+        actions.append(
+            Operation(
+                type=OperationType.TETRIS_2,
+                selector=Selector.ALL,
+                params={},
+            )
+        )
+
         # Reflect against brackets
         actions.append(
             Operation(

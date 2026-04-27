@@ -31,6 +31,7 @@ class GraphExecutor:
             OperationType.ENLARGE_SINGLE_PIXEL_OBJECTS,
             OperationType.DRAW_DIAGONALS_FROM_SINGLE_PIXELS,
             OperationType.TETRIS,
+            OperationType.TETRIS_2,
             OperationType.REFLECT_AGAINST_BRACKETS,
             OperationType.STAIRCASE,
             OperationType.SORT_COLOR_COUNTS,
@@ -383,6 +384,13 @@ class GraphExecutor:
                 else:
                     grid_state = input_grid.copy()
                 current_grid = self._tetris(grid_state)
+
+            elif operation.type == OperationType.TETRIS_2:
+                if current_grid is not None:
+                    grid_state = current_grid
+                else:
+                    grid_state = input_grid.copy()
+                current_grid = self._tetris_2(grid_state)
 
             elif operation.type == OperationType.STAIRCASE:
                 if current_grid is not None:
@@ -1684,6 +1692,100 @@ class GraphExecutor:
         # print(final_output)
         # print("~~~~~")
         return final_output
+    
+    def _tetris_2(self, grid: np.ndarray) -> np.ndarray:
+        if grid.size == 0:
+            return grid.copy()
+        
+        # print("--tetris 2---")
+        # print(grid)
+
+        # 1. Extract all objects and identify the foundation
+        extractor = ObjectExtractor(connectivity="4")
+        all_objs = extractor.extract(grid)
+        
+        foundation = max(all_objs, key=lambda obj: obj.bbox[2])
+        floating_pieces = [obj for obj in all_objs if obj != foundation and not obj.is_grid_boundary]
+        
+        # 2. Extract piece data: List of dicts with dims and color
+        piece_data = []
+        for p in floating_pieces:
+            h = int(p.bbox[2] - p.bbox[0] + 1)
+            w = int(p.bbox[3] - p.bbox[1] + 1)
+            piece_data.append({'h': h, 'w': w, 'color': p.color})
+            
+        # 3. Extract foundation gap data: List of dicts with width and anchor coords
+        f_min_r, f_min_c, f_max_r, f_max_c = foundation.bbox
+        f_height, f_width = int(f_max_r - f_min_r + 1), int(f_max_c - f_min_c + 1)
+        
+        f_mask = grid[f_min_r:f_max_r+1, f_min_c:f_max_c+1]
+        gaps = []
+        visited_gaps = np.zeros_like(f_mask, dtype=bool)
+
+        for r in range(f_height):
+            for c in range(f_width):
+                if f_mask[r, c] == 0 and not visited_gaps[r, c]:
+                    tc = c
+                    while tc + 1 < f_width and f_mask[r, tc + 1] == 0:
+                        tc += 1
+                    
+                    gw = int(tc - c + 1)
+                    # We need the absolute grid row/col to place the piece later
+                    gaps.append({'w': gw, 'r': int(f_min_r + r), 'c': int(f_min_c + c)})
+                    visited_gaps[r, c:tc+1] = True
+
+        # print(f"Gap Widths: {[g['w'] for g in gaps]}")
+        # print(f"Floating Pieces (h, w): {[(p['h'], p['w']) for p in piece_data]}")
+
+        # Prepare Output and Backtracking Solver
+        output = np.zeros_like(grid)
+        for r, c in foundation.pixels:
+            output[r, c] = foundation.color
+
+        final_mapping = {}
+        gap_used = [False] * len(gaps)
+
+        def solve_matching(p_idx: int) -> bool:
+            if p_idx == len(piece_data):
+                return True
+            
+            p = piece_data[p_idx]
+            for g_idx, g in enumerate(gaps):
+                if not gap_used[g_idx]:
+                    # Check Normal vs Rotated fit
+                    can_fit_normal = (p['w'] == g['w'])
+                    can_fit_rotated = (p['h'] == g['w'])
+                    
+                    # Backtracking through valid configurations
+                    for rotate in [False, True]:
+                        if (not rotate and can_fit_normal) or (rotate and can_fit_rotated):
+                            gap_used[g_idx] = True
+                            final_mapping[p_idx] = {'gap_idx': g_idx, 'rotated': rotate}
+                            if solve_matching(p_idx + 1):
+                                return True
+                            gap_used[g_idx] = False
+                            del final_mapping[p_idx]
+            return False
+
+        # 5. Execute Solver and Render Final Placement
+        if solve_matching(0):
+            # print("--- Final Mapping Found ---")
+            for p_idx, match in final_mapping.items():
+                p = piece_data[p_idx]
+                g = gaps[match['gap_idx']]
+                
+                actual_w = p['h'] if match['rotated'] else p['w']
+                actual_h = p['w'] if match['rotated'] else p['h']
+                
+                r_start = g['r'] - actual_h + 1
+                output[r_start : g['r'] + 1, g['c'] : g['c'] + actual_w] = p['color']
+        else:
+            # print("!!! No valid global matching found !!!")
+            pass
+        
+        # print(output)
+        # print("~~~~")
+        return output
     
     def _move_toward_other(self, grid: np.ndarray, obj_idx: int) -> np.ndarray:
         if grid.size == 0:

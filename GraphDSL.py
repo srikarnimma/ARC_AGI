@@ -37,6 +37,7 @@ class OperationType(Enum):
     ENLARGE_SINGLE_PIXEL_OBJECTS = "enlarge_single_pixel_objects"
     DRAW_DIAGONALS_FROM_SINGLE_PIXELS = "draw_diagonals_from_single_pixels"
     TETRIS = "tetris"
+    TETRIS_2 = "tetris_2"
     REFLECT_AGAINST_BRACKETS = "reflect_against_brackets"
     MOVE_TOWARD_OTHER = "move_toward_other"
     STAIRCASE = "staircase"
